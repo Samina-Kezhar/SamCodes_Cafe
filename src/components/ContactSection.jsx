@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { MapPin, Phone, Clock, Mail, Send, CheckCircle, Navigation, Calendar, Users } from 'lucide-react';
+import { MapPin, Phone, Clock, Mail, Send, CheckCircle, Navigation, Calendar, Users, MessageCircle } from 'lucide-react';
 import { InstagramIcon as Instagram } from './InstagramIcon';
+import { CafenaBrushStroke } from './CafenaDecorations';
 
 export function ContactSection() {
   const [formData, setFormData] = useState({
@@ -46,7 +47,7 @@ export function ContactSection() {
         message: ''
       });
     } catch (err) {
-      setErrorMessage(err.message || 'Something went wrong. Please call us directly.');
+      setErrorMessage(err.message || 'Something went wrong. Please call or WhatsApp us directly.');
     } finally {
       setSubmitting(false);
     }
@@ -57,10 +58,13 @@ export function ContactSection() {
       <div className="container">
         {/* Section Header */}
         <div className="section-header">
-          <span className="section-tag">Visit & Connect</span>
-          <h2 className="section-title">Come Say Hello at The Allen Town</h2>
+          <span className="section-tag">Visit & Reserve</span>
+          <h2 className="section-title">Reserve a Table at The Allen Town</h2>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.9rem' }}>
+            <CafenaBrushStroke />
+          </div>
           <p className="section-desc">
-            Reserve a cozy table for work or celebration, or drop us a line with any questions.
+            Book your favorite corner for deep work, a peaceful coffee date, or celebration with friends.
           </p>
         </div>
 
@@ -73,7 +77,7 @@ export function ContactSection() {
             alignItems: 'flex-start'
           }}
         >
-          {/* Left: Contact Form / Table Reservation */}
+          {/* Left: Table Reservation Form */}
           <div
             style={{
               background: 'var(--bg-surface)',
@@ -83,8 +87,8 @@ export function ContactSection() {
               boxShadow: 'var(--shadow-md)'
             }}
           >
-            <h3 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '0.4rem' }}>
-              Reserve a Table or Send an Inquiry
+            <h3 style={{ fontSize: '1.35rem', fontWeight: 800, marginBottom: '0.4rem', color: 'var(--text-main)' }}>
+              Reserve Your Table
             </h3>
             <p style={{ fontSize: '0.86rem', color: 'var(--text-muted)', marginBottom: '1.6rem' }}>
               We will confirm your reservation request within 15 minutes during operating hours.
@@ -93,7 +97,7 @@ export function ContactSection() {
             {submitted ? (
               <div
                 style={{
-                  background: 'rgba(16, 185, 129, 0.15)',
+                  background: 'rgba(16, 185, 129, 0.12)',
                   border: '1px solid #10b981',
                   borderRadius: 'var(--radius-md)',
                   padding: '2rem',
@@ -102,10 +106,10 @@ export function ContactSection() {
               >
                 <CheckCircle size={44} style={{ color: '#10b981', margin: '0 auto 1rem auto' }} />
                 <h4 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '0.5rem' }}>
-                  Request Received!
+                  Reservation Request Received!
                 </h4>
                 <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginBottom: '1.2rem' }}>
-                  Thank you! The Coffee Stand team at Nikol has received your details and will get in touch with you shortly.
+                  Thank you! The Cafena team at Nikol has received your details and will get in touch with you shortly.
                 </p>
                 <button
                   type="button"
@@ -113,12 +117,12 @@ export function ContactSection() {
                   className="btn btn-secondary"
                   style={{ padding: '0.5rem 1.2rem', fontSize: '0.85rem' }}
                 >
-                  Submit Another Inquiry
+                  Reserve Another Table
                 </button>
               </div>
             ) : (
               <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {/* Inquiry Type Radio / Selector */}
+                {/* Inquiry Type Selector */}
                 <div>
                   <label style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-main)', display: 'block', marginBottom: '0.4rem' }}>
                     Type of Request
@@ -138,7 +142,7 @@ export function ContactSection() {
                     }}
                   >
                     <option value="table_reservation">Table Reservation (Dine-in / Meeting)</option>
-                    <option value="private_event">Private Party / Birthday Gathering</option>
+                    <option value="private_event">Private Gathering / Birthday Celebration</option>
                     <option value="general">General Inquiry or Feedback</option>
                   </select>
                 </div>
@@ -151,7 +155,7 @@ export function ContactSection() {
                     </label>
                     <input
                       type="text"
-                      placeholder="Keval Patel"
+                      placeholder="e.g. Keval Patel"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       required
@@ -199,7 +203,7 @@ export function ContactSection() {
                   </label>
                   <input
                     type="email"
-                    placeholder="keval@example.com"
+                    placeholder="patel@example.com"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     required
@@ -216,7 +220,7 @@ export function ContactSection() {
                   />
                 </div>
 
-                {/* Party Size & Date if Table Reservation */}
+                {/* Party Size, Date, Time */}
                 {formData.inquiry_type !== 'general' && (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.8rem' }}>
                     <div>
@@ -228,7 +232,7 @@ export function ContactSection() {
                         onChange={(e) => setFormData({ ...formData, party_size: e.target.value })}
                         style={{
                           width: '100%',
-                          padding: '0.65rem 0.8rem',
+                          padding: '0.65rem 0.6rem',
                           background: 'var(--bg-surface-elevated)',
                           border: '1px solid var(--border-subtle)',
                           borderRadius: 'var(--radius-sm)',
@@ -252,7 +256,7 @@ export function ContactSection() {
                         onChange={(e) => setFormData({ ...formData, preferred_date: e.target.value })}
                         style={{
                           width: '100%',
-                          padding: '0.6rem 0.6rem',
+                          padding: '0.6rem 0.5rem',
                           background: 'var(--bg-surface-elevated)',
                           border: '1px solid var(--border-subtle)',
                           borderRadius: 'var(--radius-sm)',
@@ -272,7 +276,7 @@ export function ContactSection() {
                         onChange={(e) => setFormData({ ...formData, preferred_time: e.target.value })}
                         style={{
                           width: '100%',
-                          padding: '0.6rem 0.6rem',
+                          padding: '0.6rem 0.5rem',
                           background: 'var(--bg-surface-elevated)',
                           border: '1px solid var(--border-subtle)',
                           borderRadius: 'var(--radius-sm)',
@@ -284,14 +288,14 @@ export function ContactSection() {
                   </div>
                 )}
 
-                {/* Message */}
+                {/* Notes */}
                 <div>
                   <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.3rem' }}>
-                    Notes or Special Requests *
+                    Notes or Seating Preferences (Indoor AC / Patio)
                   </label>
                   <textarea
                     rows={3}
-                    placeholder="Tell us about seating preferences (indoor/patio), celebrations, or dietary requirements..."
+                    placeholder="Tell us about seating preferences (indoor/outdoor patio), celebrations, or dietary requirements..."
                     value={formData.message}
                     onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                     required
@@ -320,15 +324,14 @@ export function ContactSection() {
                   style={{ width: '100%', padding: '0.85rem', fontSize: '0.98rem', fontWeight: 700 }}
                 >
                   <Send size={16} />
-                  <span>{submitting ? 'Sending Request...' : 'Submit Reservation / Message'}</span>
+                  <span>{submitting ? 'Sending Request...' : 'Confirm Table Reservation Request'}</span>
                 </button>
               </form>
             )}
           </div>
 
-          {/* Right: Café Info & Map Card */}
+          {/* Right: Café Info, Social Media & Connect Cards */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            {/* Quick Contact Info Cards */}
             <div
               style={{
                 background: 'var(--bg-surface)',
@@ -367,18 +370,18 @@ export function ContactSection() {
                 </div>
               </div>
 
-              {/* Phone */}
+              {/* Phone & WhatsApp Quick Connect */}
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
                 <div
                   style={{
                     width: '42px',
                     height: '42px',
                     borderRadius: 'var(--radius-md)',
-                    background: 'rgba(234, 139, 57, 0.15)',
+                    background: 'rgba(16, 185, 129, 0.15)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: 'var(--primary)',
+                    color: '#10b981',
                     flexShrink: 0
                   }}
                 >
@@ -386,16 +389,28 @@ export function ContactSection() {
                 </div>
                 <div>
                   <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '3px' }}>
-                    Call the Barista Bar
+                    Direct Barista Line & WhatsApp
                   </h4>
-                  <a
-                    href="tel:06353935169"
-                    style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--primary)', textDecoration: 'none' }}
-                  >
-                    063539 35169
-                  </a>
-                  <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                    Available for orders, takeaway pickups & directions
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center', marginTop: '4px' }}>
+                    <a
+                      href="tel:06353935169"
+                      style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--primary)', textDecoration: 'none' }}
+                    >
+                      063539 35169
+                    </a>
+                    <a
+                      href="https://wa.me/916353935169?text=Hi%20Coffee%20Stand%20Nikol%2C%20I%20would%20like%20to%20inquire%20about%20a%20table%20reservation."
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn-secondary"
+                      style={{ padding: '3px 10px', fontSize: '0.78rem', gap: '5px', color: '#10b981' }}
+                    >
+                      <MessageCircle size={14} />
+                      <span>WhatsApp Chat</span>
+                    </a>
+                  </div>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                    Available for reservations, takeaway pickups & directions
                   </p>
                 </div>
               </div>
@@ -419,29 +434,29 @@ export function ContactSection() {
                 </div>
                 <div>
                   <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '3px' }}>
-                    Opening Hours
+                    Operating Hours
                   </h4>
                   <p style={{ fontSize: '0.9rem', color: 'var(--text-main)', fontWeight: 600 }}>
                     Monday – Sunday: 9:00 AM – 12:00 AM Midnight
                   </p>
                   <span style={{ fontSize: '0.78rem', color: '#10b981', fontWeight: 700 }}>
-                    🟢 Open Now until 12 AM
+                    🟢 Open Daily until 12 AM Midnight
                   </span>
                 </div>
               </div>
 
-              {/* Pricing & Average Spend */}
+              {/* Instagram & Social Media Links */}
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
                 <div
                   style={{
                     width: '42px',
                     height: '42px',
                     borderRadius: 'var(--radius-md)',
-                    background: 'rgba(234, 139, 57, 0.15)',
+                    background: 'rgba(193, 53, 132, 0.15)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: 'var(--primary)',
+                    color: '#c13584',
                     flexShrink: 0
                   }}
                 >
@@ -449,19 +464,30 @@ export function ContactSection() {
                 </div>
                 <div>
                   <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '3px' }}>
-                    Social & Spend
+                    Follow Us on Social Media
                   </h4>
-                  <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)' }}>
-                    Price per person: <strong>₹200–400</strong>
-                  </p>
-                  <a
-                    href="https://www.instagram.com/coffeestand.nikol"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ fontSize: '0.88rem', color: 'var(--primary)', fontWeight: 600 }}
-                  >
-                    @coffeestand.nikol
-                  </a>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '4px' }}>
+                    <a
+                      href="https://www.instagram.com/cafena.nikol"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn-secondary"
+                      style={{ padding: '4px 10px', fontSize: '0.8rem', gap: '6px' }}
+                    >
+                      <Instagram size={14} style={{ color: '#c13584' }} />
+                      <span>@cafena.nikol</span>
+                    </a>
+                    <a
+                      href="https://wa.me/916353935169"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn-secondary"
+                      style={{ padding: '4px 10px', fontSize: '0.8rem', gap: '6px' }}
+                    >
+                      <MessageCircle size={14} style={{ color: '#10b981' }} />
+                      <span>WhatsApp Community</span>
+                    </a>
+                  </div>
                 </div>
               </div>
             </div>
@@ -472,7 +498,7 @@ export function ContactSection() {
                 background: 'linear-gradient(135deg, var(--primary-subtle), var(--bg-surface-elevated))',
                 border: '1px solid var(--border-medium)',
                 borderRadius: 'var(--radius-lg)',
-                padding: '1.5rem',
+                padding: '1.4rem',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
@@ -480,11 +506,11 @@ export function ContactSection() {
               }}
             >
               <div>
-                <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-main)' }}>
-                  Need Directions to Coffee Stand?
+                <h4 style={{ fontSize: '1.02rem', fontWeight: 800, color: 'var(--text-main)' }}>
+                  Need Live Navigation?
                 </h4>
-                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                  Open directly in Google Maps for live turn-by-turn navigation.
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                  Tap below to open directly in Google Maps for live turn-by-turn routing.
                 </p>
               </div>
 
@@ -493,7 +519,7 @@ export function ContactSection() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn btn-primary"
-                style={{ padding: '0.65rem 1.2rem', fontSize: '0.88rem', flexShrink: 0 }}
+                style={{ padding: '0.65rem 1.2rem', fontSize: '0.86rem', flexShrink: 0 }}
               >
                 <Navigation size={16} />
                 <span>Get Directions</span>
@@ -501,6 +527,7 @@ export function ContactSection() {
             </div>
           </div>
         </div>
+
       </div>
     </section>
   );

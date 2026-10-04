@@ -8,7 +8,7 @@ export function Hero({ onOpenMenu, onOpenQRModal, onOpenTrackOrder }) {
       <div className="hero-bg-wrapper">
         <img
           src="/images/hero-cafe.jpg"
-          alt="Coffee Stand Cozy Cafe Ambiance"
+          alt="Cafena Cozy Cafe Ambiance"
           className="hero-bg-image"
         />
         <div className="hero-overlay"></div>

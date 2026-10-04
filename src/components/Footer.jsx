@@ -1,8 +1,9 @@
 import React from 'react';
-import { Coffee, MapPin, Phone, Clock, Heart, ArrowUp } from 'lucide-react';
+import { MapPin, Phone, Clock, ArrowUp, Lock, MessageCircle } from 'lucide-react';
 import { InstagramIcon as Instagram } from './InstagramIcon';
+import { CafenaLogoStamp } from './CafenaDecorations';
 
-export function Footer({ onOpenQRModal, onOpenTrackOrder }) {
+export function Footer({ onOpenOwnerAuth }) {
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -16,33 +17,25 @@ export function Footer({ onOpenQRModal, onOpenTrackOrder }) {
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
             gap: '2.5rem',
-            marginBottom: '3.5rem'
+            marginBottom: '3rem'
           }}
         >
           {/* Col 1: Brand & Bio */}
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1rem' }}>
-              <div
-                style={{
-                  width: '38px',
-                  height: '38px',
-                  borderRadius: '10px',
-                  background: 'linear-gradient(135deg, var(--primary), var(--accent-caramel))',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#fff'
-                }}
-              >
-                <Coffee size={20} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '1.1rem' }}>
+              <CafenaLogoStamp size={44} />
+              <div>
+                <h3 style={{ fontSize: '1.45rem', fontWeight: 900, fontFamily: 'var(--font-display)', letterSpacing: '0.06em', color: '#ffffff', lineHeight: 1 }}>
+                  CAFENA
+                </h3>
+                <span style={{ fontSize: '0.72rem', letterSpacing: '0.12em', color: 'var(--primary)', textTransform: 'uppercase', fontFamily: 'var(--font-heading)' }}>
+                  Artisanal Specialty Roastery & Cafe
+                </span>
               </div>
-              <h3 style={{ fontSize: '1.3rem', fontWeight: 800, letterSpacing: '0.02em', color: 'var(--text-main)' }}>
-                COFFEE STAND
-              </h3>
             </div>
 
-            <p style={{ fontSize: '0.86rem', color: 'var(--text-muted)', lineHeight: 1.65, marginBottom: '1.2rem' }}>
-              Nikol’s premier artisan specialty coffee and frappe lounge. Handcrafting memories, rich roasts, and
+            <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', lineHeight: 1.65, marginBottom: '1.2rem' }}>
+              Nikol’s premier artisan specialty coffee and frappe lounge. Handcrafting memories, rich single-estate roasts, and
               cozy conversations at The Allen Town until midnight every day.
             </p>
 
@@ -52,8 +45,8 @@ export function Footer({ onOpenQRModal, onOpenTrackOrder }) {
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
-                  width: '38px',
-                  height: '38px',
+                  width: '40px',
+                  height: '40px',
                   borderRadius: '50%',
                   background: 'var(--bg-surface)',
                   border: '1px solid var(--border-subtle)',
@@ -68,10 +61,30 @@ export function Footer({ onOpenQRModal, onOpenTrackOrder }) {
                 <Instagram size={18} />
               </a>
               <a
+                href="https://wa.me/916353935169"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '50%',
+                  background: 'var(--bg-surface)',
+                  border: '1px solid var(--border-subtle)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#10b981',
+                  transition: 'all 0.2s'
+                }}
+                aria-label="WhatsApp"
+              >
+                <MessageCircle size={18} />
+              </a>
+              <a
                 href="tel:06353935169"
                 style={{
-                  width: '38px',
-                  height: '38px',
+                  width: '40px',
+                  height: '40px',
                   borderRadius: '50%',
                   background: 'var(--bg-surface)',
                   border: '1px solid var(--border-subtle)',
@@ -90,8 +103,8 @@ export function Footer({ onOpenQRModal, onOpenTrackOrder }) {
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
-                  width: '38px',
-                  height: '38px',
+                  width: '40px',
+                  height: '40px',
                   borderRadius: '50%',
                   background: 'var(--bg-surface)',
                   border: '1px solid var(--border-subtle)',
@@ -114,39 +127,28 @@ export function Footer({ onOpenQRModal, onOpenTrackOrder }) {
               Explore Café
             </h4>
             <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.6rem', fontSize: '0.88rem', color: 'var(--text-muted)' }}>
-              <li><a href="#hero" className="hover-primary">Home & Welcome</a></li>
-              <li><a href="#menu" className="hover-primary">Interactive QR Menu</a></li>
-              <li><a href="#offers" className="hover-primary">Promotions & Student Deals</a></li>
-              <li><a href="#gallery" className="hover-primary">Photo Gallery</a></li>
-              <li><a href="#videos" className="hover-primary">Reels & Atmosphere</a></li>
-              <li><a href="#about" className="hover-primary">Our Story & Reviews</a></li>
-              <li><a href="#contact" className="hover-primary">Visit & Table Reservation</a></li>
+              <li><a href="#hero" className="hover-primary">Home & Roastery</a></li>
+              <li><a href="#menu" className="hover-primary">Artisanal Menu</a></li>
+              <li><a href="#gallery" className="hover-primary">Visual Gallery</a></li>
+              <li><a href="#videos" className="hover-primary">Cinematic Reels</a></li>
+              <li><a href="#about" className="hover-primary">Our Story & Heritage</a></li>
+              <li><a href="#reviews" className="hover-primary">Guest Testimonials</a></li>
+              <li><a href="#contact" className="hover-primary">Reserve a Table</a></li>
             </ul>
           </div>
 
-          {/* Col 3: QR & Ordering */}
+          {/* Col 3: Café Ambiance & Experience */}
           <div>
             <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--accent-gold)', marginBottom: '1.2rem' }}>
-              Direct Dining Service
+              Café Atmosphere
             </h4>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: '1rem' }}>
-              Already seated at Coffee Stand? Scan the acrylic tent card on your table to open the interactive menu and place orders straight to our baristas.
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: '0.8rem' }}>
+              Designed for serene co-working, soulful conversations, and late-night unwinding. Enjoy chilled indoor AC seating or our starlit outdoor patio.
             </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-              <button
-                onClick={onOpenQRModal}
-                className="btn btn-secondary"
-                style={{ width: '100%', padding: '0.55rem', fontSize: '0.82rem' }}
-              >
-                Open Table QR Standee
-              </button>
-              <button
-                onClick={onOpenTrackOrder}
-                className="btn btn-secondary"
-                style={{ width: '100%', padding: '0.55rem', fontSize: '0.82rem' }}
-              >
-                Track Live Order by ID
-              </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.82rem', color: 'var(--text-main)', fontWeight: 600 }}>
+              <span>✓ High-Speed Fiber Wi-Fi</span>
+              <span>✓ Starlit Open-Air Patio</span>
+              <span>✓ 100% Pure Vegetarian</span>
             </div>
           </div>
 
@@ -176,7 +178,7 @@ export function Footer({ onOpenQRModal, onOpenTrackOrder }) {
         <div
           style={{
             borderTop: '1px solid var(--border-subtle)',
-            paddingTop: '1.8rem',
+            paddingTop: '1.6rem',
             display: 'flex',
             flexWrap: 'wrap',
             alignItems: 'center',
@@ -187,12 +189,29 @@ export function Footer({ onOpenQRModal, onOpenTrackOrder }) {
           }}
         >
           <div>
-            © {new Date().getFullYear()} Coffee Stand Nikol. All rights reserved. Handcrafted for coffee lovers.
+            © {new Date().getFullYear()} Cafena Nikol. All rights reserved. Handcrafted with pride.
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <span>Price: ₹200–400 / person</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.2rem' }}>
+            {/* Staff / Owner Access Link */}
+            <button
+              onClick={onOpenOwnerAuth}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                color: 'var(--text-dim)',
+                fontSize: '0.78rem',
+                opacity: 0.8
+              }}
+              title="Restricted Café Management Portal"
+            >
+              <Lock size={12} />
+              <span>Owner Portal</span>
+            </button>
+
             <span>•</span>
+
             <button
               onClick={scrollToTop}
               style={{

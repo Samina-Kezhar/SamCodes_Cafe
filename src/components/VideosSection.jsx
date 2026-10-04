@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { Play, Volume2, VolumeX, Sparkles, ExternalLink, Film } from 'lucide-react';
+import { Play, Volume2, VolumeX, Sparkles, ExternalLink, Film, MessageCircle } from 'lucide-react';
 import { InstagramIcon as Instagram } from './InstagramIcon';
+import { CafenaBrushStroke } from './CafenaDecorations';
 
 const VIDEOS = [
   {
     id: 'vid-1',
     title: 'Crafting Our Signature Biscoff Frappe',
     subtitle: 'Step-by-step creation of Nikol’s most loved dessert frappe',
-    thumbnail: '/images/signature-frappe.jpg',
+    thumbnail: 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?auto=format&fit=crop&w=800&q=80',
     duration: '0:45',
     views: '14.2K Views on Instagram',
     instagramUrl: 'https://www.instagram.com/coffeestand.nikol/'
@@ -16,7 +17,7 @@ const VIDEOS = [
     id: 'vid-2',
     title: 'Swan Rosetta Latte Art in 60 Seconds',
     subtitle: 'Watch our barista pour intricate micro-foam rosettas',
-    thumbnail: '/images/latte-art.jpg',
+    thumbnail: 'https://images.unsplash.com/photo-1534778101976-62847782c213?auto=format&fit=crop&w=800&q=80',
     duration: '0:58',
     views: '18.9K Views on Instagram',
     instagramUrl: 'https://www.instagram.com/coffeestand.nikol/'
@@ -25,7 +26,7 @@ const VIDEOS = [
     id: 'vid-3',
     title: 'Evening Ambiance at The Allen Town',
     subtitle: 'Fairy lights, acoustic lo-fi vibes & late-night coffee dates',
-    thumbnail: '/images/cafe-patio.jpg',
+    thumbnail: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80',
     duration: '1:15',
     views: '22.5K Views on Instagram',
     instagramUrl: 'https://www.instagram.com/coffeestand.nikol/'
@@ -34,7 +35,6 @@ const VIDEOS = [
 
 export function VideosSection() {
   const [activeVideo, setActiveVideo] = useState(null);
-  const [isPlayingAmbiance, setIsPlayingAmbiance] = useState(false);
 
   return (
     <section id="videos" style={{ padding: '80px 0', background: 'var(--bg-surface-elevated)', transition: 'background 0.35s ease' }}>
@@ -43,8 +43,11 @@ export function VideosSection() {
         <div className="section-header">
           <span className="section-tag">Cinematic Reels</span>
           <h2 className="section-title">Café Ambiance & Stories</h2>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.9rem' }}>
+            <CafenaBrushStroke />
+          </div>
           <p className="section-desc">
-            Take a look behind the espresso bar and experience the warm, vibrant atmosphere of Coffee Stand Nikol.
+            Take a look behind the espresso bar and experience the warm, vibrant atmosphere of Cafena Nikol.
           </p>
         </div>
 
@@ -203,22 +206,22 @@ export function VideosSection() {
               <Instagram size={28} />
             </div>
             <div>
-              <h3 style={{ fontSize: '1.3rem', fontWeight: 800 }}>Follow @coffeestand.nikol on Instagram</h3>
+              <h3 style={{ fontSize: '1.3rem', fontWeight: 800 }}>Follow @cafena.nikol on Instagram</h3>
               <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)' }}>
-                Tag us in your coffee stories for a chance to win free signature frappe vouchers every Friday!
+                Tag us in your coffee stories for weekly featured stories and barista specials!
               </p>
             </div>
           </div>
 
           <a
-            href="https://www.instagram.com/coffeestand.nikol"
+            href="https://www.instagram.com/cafena.nikol"
             target="_blank"
             rel="noopener noreferrer"
             className="btn btn-primary"
             style={{ padding: '0.75rem 1.6rem', fontSize: '0.95rem' }}
           >
             <Instagram size={18} />
-            <span>Visit @coffeestand.nikol</span>
+            <span>Visit @cafena.nikol</span>
           </a>
         </div>
       </div>
@@ -241,7 +244,7 @@ export function VideosSection() {
                 style={{
                   position: 'absolute',
                   inset: 0,
-                  background: 'rgba(0, 0, 0, 0.4)',
+                  background: 'rgba(0, 0, 0, 0.45)',
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',

@@ -1,54 +1,55 @@
 import React, { useState } from 'react';
-import { Camera, ZoomIn, X, ChevronLeft, ChevronRight, Heart } from 'lucide-react';
+import { Camera, ZoomIn, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CafenaBrushStroke } from './CafenaDecorations';
 
 const GALLERY_ITEMS = [
   {
     id: 1,
     title: 'Warm Emerald Booths & Cafe Interior',
     category: 'vibe',
-    image: '/images/hero-cafe.jpg',
+    image: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=800&q=80',
     description: 'Cozy booths, warm vintage lighting, and quiet corners for conversation and deep work.'
   },
   {
     id: 2,
-    title: 'Coffee Stand Signature Biscoff Frappe',
+    title: 'Cafena Signature Biscoff Frappe',
     category: 'frappes',
-    image: '/images/signature-frappe.jpg',
+    image: 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?auto=format&fit=crop&w=800&q=80',
     description: 'Rich blended espresso, spiced lotus biscuit crumble, and handcrafted caramel swirl.'
   },
   {
     id: 3,
     title: 'Artisan Swan Rosetta Latte Art',
     category: 'brews',
-    image: '/images/latte-art.jpg',
-    description: 'Poured with microfoam by our baristas using 100% single origin Indian Arabica.'
+    image: 'https://images.unsplash.com/photo-1534778101976-62847782c213?auto=format&fit=crop&w=800&q=80',
+    description: 'Poured with silky microfoam by our baristas using 100% single origin Indian Arabica.'
   },
   {
     id: 4,
     title: 'Golden Grilled Paneer Tikka Panini',
     category: 'food',
-    image: '/images/paneer-panini.jpg',
+    image: 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?auto=format&fit=crop&w=800&q=80',
     description: 'Artisan multigrain sourdough toasted with malai paneer, fresh basil pesto, and mozzarella.'
   },
   {
     id: 5,
     title: 'Belgian Dark Chocolate & Berry Waffle',
     category: 'food',
-    image: '/images/belgian-waffle.jpg',
+    image: 'https://images.unsplash.com/photo-1562376552-0d160a2f238d?auto=format&fit=crop&w=800&q=80',
     description: 'Crispy warm waffle stack smothered in Belgian ganache and fresh orchard strawberries.'
   },
   {
     id: 6,
     title: 'Wild Berry Hibiscus & Peach Coolers',
     category: 'brews',
-    image: '/images/iced-refresher.jpg',
-    description: 'Sparkling botanicals, whole brewed hibiscus flowers, and aromatic mint.'
+    image: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?auto=format&fit=crop&w=800&q=80',
+    description: 'Sparkling botanicals, whole brewed hibiscus flowers, and aromatic garden mint.'
   },
   {
     id: 7,
     title: 'Fairy-Lit Evening Patio at The Allen Town',
     category: 'vibe',
-    image: '/images/cafe-patio.jpg',
+    image: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80',
     description: 'Al fresco outdoor seating with string fairy lights, pleasant evening breeze, and coffee.'
   }
 ];
@@ -80,7 +81,10 @@ export function GallerySection() {
         {/* Section Header */}
         <div className="section-header">
           <span className="section-tag">Visual Experience</span>
-          <h2 className="section-title">The Coffee Stand Gallery</h2>
+          <h2 className="section-title">The Cafena Gallery</h2>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.9rem' }}>
+            <CafenaBrushStroke />
+          </div>
           <p className="section-desc">
             A glimpse into our artisanal brewing rituals, delectable bites, and cozy cafe corners in Nikol.
           </p>

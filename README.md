@@ -1,6 +1,6 @@
-# ☕ Coffee Stand — Specialty Coffee & Frappe Lounge
+# ☕ Cafena — Handcrafted Specialty Coffee & Frappe Lounge
 > **Location:** Shop GF.15, The Allen Town, Nikol Ring Road, Sardar Patel Ring Rd, Nikol, Ahmedabad, Gujarat 380049  
-> **Contact:** [063539 35169](tel:06353935169) | **Instagram:** [@coffeestand.nikol](https://www.instagram.com/coffeestand.nikol)  
+> **Contact:** [063539 35169](tel:06353935169) | **Instagram:** [@cafena.nikol](https://www.instagram.com/cafena.nikol)  
 > **Hours:** Open Daily 9:00 AM – 12:00 AM Midnight | **Rating:** 4.8★ (Google & Zomato Verified, 1,400+ Reviews)  
 > **Price per person:** ₹200–400
 
@@ -8,7 +8,7 @@
 
 ## 🌟 Overview
 
-**Coffee Stand** is a modern, production-ready, full-stack web application designed for Nikol’s favorite specialty coffee and frappe destination. It pairs a **luxury artisanal café website** with a **seamless QR code-based table ordering system**, a **dual-theme system (Artisanal Day Cream & Midnight Velvet Lounge)**, and a **real-time desktop/tablet Owner & Kitchen Management Dashboard**.
+**Cafena** is a modern, production-ready, full-stack web application designed for Nikol’s favorite specialty coffee and frappe destination. Inspired by authentic artisanal European coffee houses and contemporary café culture, it pairs a **luxury artisanal café website** with a **seamless QR code-based table ordering system**, a **dual-theme system (Warm Crema Parchment & Midnight Velvet Roast)**, and a **real-time desktop/tablet Owner & Kitchen Management Dashboard**.
 
 ---
 

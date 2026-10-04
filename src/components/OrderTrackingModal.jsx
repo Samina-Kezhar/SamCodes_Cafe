@@ -104,7 +104,7 @@ export function OrderTrackingModal({ isOpen, onClose, initialOrder }) {
             </div>
             <div>
               <h3 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Live Order Status</h3>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Real-time updates from Coffee Stand Kitchen</p>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Real-time updates from Cafena Kitchen</p>
             </div>
           </div>
           <button onClick={onClose} className="btn-icon" aria-label="Close modal">
@@ -274,7 +274,7 @@ export function OrderTrackingModal({ isOpen, onClose, initialOrder }) {
                     {order.status === 'received' && '🟡 Order Received — Barista will begin brewing shortly.'}
                     {order.status === 'brewing' && '🔥 Brewing in Progress — Grinding fresh beans & preparing food!'}
                     {order.status === 'ready' && '🎉 Order is Ready! Your items are being served to your table.'}
-                    {order.status === 'completed' && '✨ Completed! Thank you for visiting Coffee Stand Nikol.'}
+                    {order.status === 'completed' && '✨ Completed! Thank you for visiting Cafena Nikol.'}
                   </p>
                   <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
                     Estimated Prep: ~{order.status === 'ready' || order.status === 'completed' ? 'Done' : '8-10 mins'}

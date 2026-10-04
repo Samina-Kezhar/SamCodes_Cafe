@@ -1,123 +1,134 @@
 /* ==========================================================================
-   COFFEE STAND - ARTISANAL SPECIALTY CAFE DESIGN SYSTEM (VANILLA CSS)
+   CAFENA - ARTISANAL SPECIALTY CAFE DESIGN SYSTEM (VANILLA CSS)
+   Aesthetic: Warm Crema Parchment, Roasted Espresso & Molten Caramel Bronze
+   Inspired by: Cafena Signature European Artisanal Roastery Template
    Location: Shop GF.15, The Allen Town, Nikol, Ahmedabad
-   Features: Dual-Theme Architecture (Artisanal Day Cream & Midnight Velvet Lounge)
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
    1. ROOT VARIABLES & DUAL-THEME TOKENS
    -------------------------------------------------------------------------- */
 :root,
-[data-theme="warm-cream"] {
-  /* Color Palette - Warm Artisanal Cream & Roasted Espresso (Daytime Roastery) */
-  --bg-base: #f8f5f0;
-  --bg-primary: #ffffff;
+[data-theme="warm-cream"],
+[data-theme="modern-latte"] {
+  /* Signature Cafena Light Theme: Warm Crema Parchment & Toasted Caramel Bronze */
+  --bg-base: #f4eee5;
+  --bg-primary: #fcfaf7;
   --bg-surface: #ffffff;
-  --bg-surface-elevated: #f2ece4;
-  --bg-surface-glass: rgba(255, 255, 255, 0.88);
-  --bg-overlay: rgba(30, 22, 16, 0.65);
+  --bg-surface-elevated: #ede3d5;
+  --bg-surface-glass: rgba(244, 238, 229, 0.94);
+  --bg-overlay: rgba(28, 24, 21, 0.78);
 
-  --primary: #b8621b;
-  --primary-hover: #9e5012;
-  --primary-dark: #7a3a09;
-  --primary-glow: rgba(184, 98, 27, 0.18);
-  --primary-subtle: rgba(184, 98, 27, 0.08);
+  /* Brand Signature Colors */
+  --primary: #c7a17a;          /* Cafena signature caramel bronze */
+  --primary-hover: #b6895b;    /* Deeper toasted caramel */
+  --primary-dark: #9c7043;     /* Roasted mocha brown */
+  --primary-glow: rgba(199, 161, 122, 0.32);
+  --primary-subtle: rgba(199, 161, 122, 0.12);
 
-  --accent-gold: #966122;
-  --accent-caramel: #b8621b;
-  --accent-cream: #1e1611;
-  --accent-latte: #3e3229;
+  /* Warm Accents */
+  --accent-gold: #c7a17a;
+  --accent-caramel: #b6895b;
+  --accent-cream: #f4eee5;
+  --accent-latte: #ebe2d5;
+  --accent-sand: #dfc8b0;
 
+  /* Status Colors */
   --success: #15803d;
-  --success-glow: rgba(21, 128, 61, 0.18);
+  --success-glow: rgba(21, 128, 61, 0.2);
   --warning: #d97706;
   --danger: #dc2626;
   --info: #2563eb;
 
   /* Typography */
+  --font-display: 'Bebas Neue', 'Oswald', -apple-system, sans-serif;
+  --font-heading: 'Oswald', 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-serif: 'Playfair Display', Georgia, 'Times New Roman', serif;
-  --font-heading: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-body: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 
   /* Text Colors */
-  --text-main: #1e1611;
-  --text-muted: #5e5148;
-  --text-dim: #8c7e75;
+  --text-main: #1c1815;        /* Deep roast espresso charcoal */
+  --text-muted: #6b6056;       /* Warm roasted ash brown */
+  --text-dim: #998e83;         /* Soft mocha tan */
 
   /* Borders & Shadows */
-  --border-subtle: rgba(138, 98, 62, 0.12);
-  --border-medium: rgba(138, 98, 62, 0.22);
-  --border-bright: rgba(184, 98, 27, 0.45);
+  --border-subtle: rgba(28, 24, 21, 0.09);
+  --border-medium: rgba(199, 161, 122, 0.35);
+  --border-bright: #c7a17a;
 
-  --shadow-sm: 0 2px 8px rgba(72, 45, 25, 0.06);
-  --shadow-md: 0 8px 24px rgba(72, 45, 25, 0.08);
-  --shadow-lg: 0 20px 48px rgba(72, 45, 25, 0.12);
-  --shadow-glow: 0 0 25px rgba(184, 98, 27, 0.22);
+  --shadow-sm: 0 3px 12px rgba(50, 35, 20, 0.06);
+  --shadow-md: 0 10px 30px rgba(50, 35, 20, 0.09);
+  --shadow-lg: 0 24px 60px rgba(50, 35, 20, 0.13);
+  --shadow-glow: 0 0 32px var(--primary-glow);
 
   /* Radius & Transitions */
-  --radius-sm: 8px;
-  --radius-md: 14px;
-  --radius-lg: 20px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
   --radius-full: 9999px;
+  --radius-btn: 6px;           /* Signature Cafena crisp button radius */
 
   --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-base: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-smooth: 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 
-  /* Body background gradient */
-  --body-gradient: radial-gradient(circle at 50% 0%, #efe7dc 0%, #f8f5f0 60%, #eee6db 100%);
-  --hero-overlay-gradient: linear-gradient(180deg, rgba(22, 16, 12, 0.72) 0%, rgba(22, 16, 12, 0.48) 55%, var(--bg-base) 100%);
-  --navbar-bg: rgba(248, 245, 240, 0.88);
-  --navbar-scrolled-bg: rgba(255, 255, 255, 0.96);
-  --footer-bg: #ece5db;
+  /* Gradients & Special Backgrounds */
+  --body-gradient: radial-gradient(ellipse at 50% 0%, #faf6f0 0%, #f4eee5 55%, #eae1d2 100%);
+  --hero-overlay-gradient: linear-gradient(180deg, rgba(244, 238, 229, 0) 0%, rgba(244, 238, 229, 0.5) 60%, #f4eee5 100%);
+  --navbar-bg: rgba(244, 238, 229, 0.94);
+  --navbar-scrolled-bg: rgba(244, 238, 229, 0.98);
+  --footer-bg: #151210;        /* Deep dark espresso roast footer */
 }
 
-[data-theme="midnight-roast"] {
-  /* Color Palette - Midnight Espresso Velvet Lounge (Evening Theme) */
-  --bg-base: #0c0907;
-  --bg-primary: #140f0c;
-  --bg-surface: #1b1511;
-  --bg-surface-elevated: #251d18;
-  --bg-surface-glass: rgba(22, 17, 13, 0.86);
-  --bg-overlay: rgba(8, 6, 5, 0.84);
+[data-theme="midnight-roast"],
+[data-theme="onyx-roast"] {
+  /* Signature Cafena Dark Theme: Velvet Dark Roast Coffee & Molten Caramel */
+  --bg-base: #120f0d;
+  --bg-primary: #181411;
+  --bg-surface: #1e1916;
+  --bg-surface-elevated: #28211c;
+  --bg-surface-glass: rgba(30, 25, 22, 0.92);
+  --bg-overlay: rgba(8, 6, 5, 0.9);
 
-  --primary: #e68d3b;
-  --primary-hover: #f39c4d;
-  --primary-dark: #b8651c;
-  --primary-glow: rgba(230, 141, 59, 0.28);
-  --primary-subtle: rgba(230, 141, 59, 0.14);
+  /* Brand Colors */
+  --primary: #c7a17a;
+  --primary-hover: #d8b28a;
+  --primary-dark: #b6895b;
+  --primary-glow: rgba(199, 161, 122, 0.35);
+  --primary-subtle: rgba(199, 161, 122, 0.15);
 
-  --accent-gold: #f5d19e;
-  --accent-caramel: #cf7c32;
-  --accent-cream: #fbf8f4;
-  --accent-latte: #d9ccc0;
+  --accent-gold: #dfbe99;
+  --accent-caramel: #c7a17a;
+  --accent-cream: #faf5ed;
+  --accent-latte: #e8ded2;
+  --accent-sand: #c49d76;
 
-  --success: #10b981;
-  --success-glow: rgba(16, 185, 129, 0.25);
+  --success: #22c55e;
+  --success-glow: rgba(34, 197, 94, 0.25);
   --warning: #f59e0b;
   --danger: #ef4444;
   --info: #3b82f6;
 
   /* Text Colors */
-  --text-main: #fbf7f2;
-  --text-muted: #b8aca0;
-  --text-dim: #7a6e64;
+  --text-main: #f7f3ec;        /* Warm crema text */
+  --text-muted: #b8aba0;       /* Soft latte gray */
+  --text-dim: #7f7469;         /* Roasted ash */
 
   /* Borders & Shadows */
-  --border-subtle: rgba(230, 141, 59, 0.15);
-  --border-medium: rgba(230, 141, 59, 0.28);
-  --border-bright: rgba(230, 141, 59, 0.52);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-medium: rgba(199, 161, 122, 0.28);
+  --border-bright: #c7a17a;
 
-  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.45);
-  --shadow-md: 0 10px 30px rgba(0, 0, 0, 0.6);
-  --shadow-lg: 0 22px 50px rgba(0, 0, 0, 0.75);
-  --shadow-glow: 0 0 25px var(--primary-glow);
+  --shadow-sm: 0 4px 14px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 12px 34px rgba(0, 0, 0, 0.65);
+  --shadow-lg: 0 24px 64px rgba(0, 0, 0, 0.8);
+  --shadow-glow: 0 0 35px var(--primary-glow);
 
-  --body-gradient: radial-gradient(circle at 50% 0%, #1e1612 0%, #120e0b 50%, #0a0806 100%);
-  --hero-overlay-gradient: linear-gradient(180deg, rgba(14, 10, 7, 0.75) 0%, rgba(14, 10, 7, 0.5) 45%, #0c0907 100%);
-  --navbar-bg: rgba(18, 14, 11, 0.84);
-  --navbar-scrolled-bg: rgba(16, 12, 9, 0.96);
-  --footer-bg: #090705;
+  --body-gradient: radial-gradient(ellipse at 50% 0%, #1e1916 0%, #120f0d 55%, #0a0807 100%);
+  --hero-overlay-gradient: linear-gradient(180deg, rgba(18, 15, 13, 0) 0%, rgba(18, 15, 13, 0.7) 60%, #120f0d 100%);
+  --navbar-bg: rgba(18, 15, 13, 0.94);
+  --navbar-scrolled-bg: rgba(14, 12, 10, 0.98);
+  --footer-bg: #0a0807;
 }
 
 /* --------------------------------------------------------------------------
@@ -147,17 +158,22 @@ body {
   transition: background 0.35s ease, color 0.3s ease;
 }
 
-/* Custom Scrollbar */
+::selection {
+  background: var(--primary);
+  color: #ffffff;
+}
+
+/* Custom Artisan Scrollbar */
 ::-webkit-scrollbar {
   width: 9px;
   height: 9px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--bg-surface-elevated);
+  background: var(--bg-base);
 }
 ::-webkit-scrollbar-thumb {
   background: var(--primary);
-  border: 2px solid var(--bg-surface);
+  border: 2px solid var(--bg-base);
   border-radius: var(--radius-full);
 }
 ::-webkit-scrollbar-thumb:hover {
@@ -170,7 +186,7 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 700;
   line-height: 1.2;
   color: var(--text-main);
-  letter-spacing: -0.015em;
+  letter-spacing: 0.02em;
 }
 
 .serif-accent {
@@ -178,11 +194,10 @@ h1, h2, h3, h4, h5, h6 {
   font-style: italic;
   font-weight: 600;
   color: var(--primary);
-  letter-spacing: 0.01em;
 }
 
 p {
-  line-height: 1.68;
+  line-height: 1.7;
   color: var(--text-muted);
 }
 
@@ -217,7 +232,7 @@ input, select, textarea {
 }
 
 /* --------------------------------------------------------------------------
-   3. NAVIGATION BAR
+   3. NAVIGATION BAR (CAFENA MINIMALIST AESTHETIC)
    -------------------------------------------------------------------------- */
 .navbar {
   position: fixed;
@@ -225,18 +240,18 @@ input, select, textarea {
   left: 0;
   right: 0;
   z-index: 100;
-  height: 72px;
+  height: 96px;
   transition: all var(--transition-base);
   background: var(--navbar-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid var(--border-subtle);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  border-bottom: 1px solid var(--border-medium);
 }
 
 .navbar.scrolled {
   background: var(--navbar-scrolled-bg);
-  box-shadow: var(--shadow-md);
-  border-bottom-color: var(--border-medium);
+  box-shadow: 0 10px 36px rgba(28, 24, 21, 0.12);
+  border-bottom: 1px solid var(--border-bright);
 }
 
 .nav-content {
@@ -244,78 +259,83 @@ input, select, textarea {
   align-items: center;
   justify-content: space-between;
   height: 100%;
-  max-width: 1320px;
+  max-width: 1480px;
+  padding: 0 3.2rem;
 }
 
-/* Brand Logo */
+/* Brand Logo with Vintage Cafena Seal */
 .brand-logo {
   display: flex;
   align-items: center;
-  gap: 0.85rem;
+  gap: 0.95rem;
   text-decoration: none;
   flex-shrink: 0;
-}
-
-.brand-icon-wrap {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  box-shadow: 0 4px 14px var(--primary-glow);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  flex-shrink: 0;
+  color: var(--text-main);
   transition: transform var(--transition-fast);
 }
 
-.brand-logo:hover .brand-icon-wrap {
-  transform: scale(1.05) rotate(-3deg);
+.brand-logo:hover {
+  transform: translateY(-1px);
+}
+
+.cafena-nav-stamp-wrap {
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-main);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.brand-logo:hover .cafena-nav-stamp-wrap {
+  transform: rotate(-8deg) scale(1.08);
 }
 
 .brand-text-container {
   display: flex;
   flex-direction: column;
-  line-height: 1.15;
+  line-height: 1.12;
 }
 
 .brand-title-line {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.6rem;
 }
 
 .brand-name-main {
-  font-family: var(--font-heading);
-  font-size: 1.25rem;
-  font-weight: 800;
-  letter-spacing: 0.03em;
+  font-family: var(--font-display);
+  font-size: 1.85rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
   color: var(--text-main);
+  line-height: 1;
 }
 
 .brand-name-accent {
-  font-family: var(--font-heading);
-  font-size: 1.25rem;
-  font-weight: 800;
-  letter-spacing: 0.03em;
+  font-family: var(--font-display);
+  font-size: 1.85rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
   color: var(--primary);
-  margin-left: 2px;
+  line-height: 1;
 }
 
 .brand-status-chip {
-  font-size: 0.65rem;
+  font-family: var(--font-heading);
+  font-size: 0.7rem;
   font-weight: 700;
-  letter-spacing: 0.02em;
-  padding: 2px 8px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 9px;
   border-radius: var(--radius-full);
   background: rgba(21, 128, 61, 0.12);
   color: var(--success);
   border: 1px solid rgba(21, 128, 61, 0.28);
   display: inline-flex;
   align-items: center;
-  gap: 4.5px;
+  gap: 5px;
 }
 
 .pulse-dot {
@@ -329,84 +349,97 @@ input, select, textarea {
 }
 
 .brand-location-tag {
-  font-size: 0.64rem;
+  font-family: var(--font-body);
+  font-size: 0.72rem;
   color: var(--text-muted);
   font-weight: 600;
-  letter-spacing: 0.09em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   margin-top: 2px;
 }
 
-/* Nav Links */
+/* Nav Links - Cafena uppercase tracking style */
 .nav-links {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 2rem;
   list-style: none;
-  background: var(--bg-surface-elevated);
-  padding: 4px 6px;
-  border-radius: var(--radius-full);
-  border: 1px solid var(--border-subtle);
 }
 
 .nav-link {
-  font-size: 0.88rem;
-  font-weight: 500;
-  color: var(--text-muted);
+  font-family: var(--font-heading);
+  font-size: 0.96rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text-main);
   transition: all var(--transition-fast);
-  padding: 0.42rem 0.82rem;
-  border-radius: var(--radius-full);
+  padding: 0.5rem 0.25rem;
+  position: relative;
   display: inline-block;
-  letter-spacing: 0.01em;
+}
+
+.nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: var(--primary);
+  transition: width var(--transition-base);
 }
 
 .nav-link:hover {
-  color: var(--text-main);
-  background: var(--primary-subtle);
+  color: var(--primary);
+}
+
+.nav-link:hover::after {
+  width: 100%;
 }
 
 .nav-link.active {
-  color: #fff;
-  background: var(--primary);
-  font-weight: 600;
-  box-shadow: 0 2px 8px var(--primary-glow);
+  color: var(--primary);
+  font-weight: 800;
 }
 
-/* Subtle Vertical Divider */
-.nav-divider {
-  width: 1px;
-  height: 24px;
-  background: var(--border-medium);
-  margin: 0 0.25rem;
+.nav-link.active::after {
+  width: 100%;
 }
 
 /* Nav Actions */
 .nav-actions {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
+  gap: 0.85rem;
 }
 
+/* The iconic Cafena Right Action Button ($17 PURCHASE NOW / RESERVE TABLE style) */
 .btn-nav-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.48rem 0.95rem;
-  border-radius: var(--radius-full);
-  font-size: 0.83rem;
-  font-weight: 600;
-  letter-spacing: 0.015em;
-  transition: all var(--transition-fast);
+  background: var(--primary) !important;
+  color: #ffffff !important;
+  border: 1px solid var(--primary) !important;
+  border-radius: var(--radius-btn) !important;
+  font-family: var(--font-heading) !important;
+  font-size: 0.88rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+  padding: 0.65rem 1.4rem !important;
+  box-shadow: 0 4px 14px var(--primary-glow) !important;
+  transition: all var(--transition-base) !important;
 }
 
-.btn-nav-action.btn-table {
-  background: var(--primary-subtle);
-  border: 1px solid var(--primary);
-  color: var(--primary);
+.btn-nav-action:hover {
+  background: var(--primary-hover) !important;
+  border-color: var(--primary-hover) !important;
+  box-shadow: 0 6px 20px var(--primary-glow) !important;
+  transform: translateY(-2px) !important;
 }
 
-.btn-nav-action.btn-table:hover {
-  background: rgba(184, 98, 27, 0.2);
+.theme-toggle-btn {
+  border-radius: var(--radius-btn) !important;
+  border: 1px solid var(--border-medium) !important;
 }
 
 .mobile-menu-btn {
@@ -416,12 +449,12 @@ input, select, textarea {
 /* Mobile Flyout Drawer */
 .mobile-nav-drawer {
   position: fixed;
-  top: 72px;
+  top: 88px;
   left: 0;
   right: 0;
   background: var(--bg-surface);
   border-bottom: 1px solid var(--border-medium);
-  padding: 1.5rem;
+  padding: 1.6rem;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   display: flex;
@@ -436,10 +469,13 @@ input, select, textarea {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.75rem 1rem;
-  border-radius: var(--radius-md);
+  padding: 0.85rem 1.1rem;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-heading);
   font-size: 0.95rem;
-  font-weight: 600;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   color: var(--text-main);
   background: var(--bg-surface-elevated);
   border: 1px solid var(--border-subtle);
@@ -453,71 +489,75 @@ input, select, textarea {
 }
 
 /* --------------------------------------------------------------------------
-   4. BUTTONS & CONTROLS
+   4. BUTTONS & CONTROLS (CAFENA CRISP CORNERS & LETTER-SPACING)
    -------------------------------------------------------------------------- */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  padding: 0.65rem 1.35rem;
-  border-radius: var(--radius-full);
-  font-family: var(--font-body);
+  gap: 0.55rem;
+  padding: 0.75rem 1.65rem;
+  border-radius: var(--radius-btn);
+  font-family: var(--font-heading);
   font-size: 0.92rem;
-  font-weight: 600;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   transition: all var(--transition-base);
   user-select: none;
+  cursor: pointer;
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--primary), var(--accent-caramel));
-  color: #fff;
-  box-shadow: 0 4px 15px var(--primary-glow);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: var(--primary);
+  color: #ffffff;
+  box-shadow: 0 4px 16px var(--primary-glow);
+  border: 1px solid var(--primary);
 }
 
 .btn-primary:hover {
-  background: linear-gradient(135deg, var(--primary-hover), var(--primary));
-  box-shadow: 0 6px 20px var(--primary-glow);
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+  box-shadow: 0 6px 22px var(--primary-glow);
   transform: translateY(-2px);
 }
 
 .btn-secondary {
-  background: var(--bg-surface-elevated);
+  background: transparent;
   color: var(--text-main);
-  border: 1px solid var(--border-medium);
+  border: 1.5px solid var(--text-main);
 }
 
 .btn-secondary:hover {
-  background: var(--primary-subtle);
-  border-color: var(--primary);
-  color: var(--primary);
+  background: var(--text-main);
+  color: var(--bg-base);
   transform: translateY(-2px);
 }
 
 .btn-outline {
   background: transparent;
-  color: var(--primary);
-  border: 1.5px solid var(--primary);
+  color: var(--text-main);
+  border: 1.5px solid var(--border-medium);
 }
 
 .btn-outline:hover {
-  background: var(--primary);
-  color: #fff;
-  box-shadow: 0 4px 15px var(--primary-glow);
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-subtle);
+  transform: translateY(-2px);
 }
 
 .btn-icon {
-  width: 42px;
-  height: 42px;
-  border-radius: var(--radius-full);
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-btn);
   padding: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   background: var(--bg-surface-elevated);
   color: var(--text-main);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-medium);
   position: relative;
   transition: all var(--transition-fast);
 }
@@ -526,7 +566,7 @@ input, select, textarea {
   background: var(--primary-subtle);
   color: var(--primary);
   border-color: var(--primary);
-  transform: scale(1.05);
+  transform: scale(1.04);
 }
 
 .cart-counter {
@@ -536,10 +576,10 @@ input, select, textarea {
   background: var(--primary);
   color: #fff;
   font-size: 0.72rem;
-  font-weight: 700;
+  font-weight: 800;
   width: 20px;
   height: 20px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -547,156 +587,359 @@ input, select, textarea {
 }
 
 /* --------------------------------------------------------------------------
-   5. HERO SECTION
+   5. CAFENA HERO SECTION (SPLIT LAYOUT, ETCHINGS & 3D SPLASH)
    -------------------------------------------------------------------------- */
 .hero-section {
   position: relative;
   min-height: 94vh;
   display: flex;
   align-items: center;
-  padding-top: 100px;
-  padding-bottom: 60px;
+  padding-top: 120px;
+  padding-bottom: 70px;
   overflow: hidden;
+  background: var(--bg-base);
 }
 
-.hero-bg-wrapper {
+/* Background Botanical & Cafe Architectural Sketches */
+.hero-sketch-cup {
   position: absolute;
-  inset: 0;
+  top: 90px;
+  left: 20px;
+  width: 150px;
+  height: auto;
+  pointer-events: none;
   z-index: 1;
+  color: var(--text-main);
 }
 
-.hero-bg-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  filter: brightness(0.42) contrast(1.1) saturate(1.12);
-  transform: scale(1.02);
-  transition: transform 10s ease-out;
-}
-
-.hero-overlay {
+.hero-sketch-branch {
   position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at 75% 40%, rgba(184, 98, 27, 0.15) 0%, transparent 50%),
-              var(--hero-overlay-gradient);
+  bottom: 0;
+  left: -20px;
+  width: 340px;
+  max-width: 32vw;
+  height: auto;
+  pointer-events: none;
+  z-index: 1;
+  color: var(--text-main);
 }
 
-.hero-content {
+.hero-sketch-patio {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 400px;
+  max-width: 38vw;
+  height: auto;
+  pointer-events: none;
+  z-index: 1;
+  color: var(--text-main);
+}
+
+/* Hero Content Grid (Left: Typography & Stats | Right: 3D Coffee Splash) */
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  align-items: center;
+  gap: 3.5rem;
   position: relative;
   z-index: 2;
-  max-width: 800px;
+  width: 100%;
+}
+
+.hero-left {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
 
 .hero-tag {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.45rem 1.1rem;
+  padding: 0.4rem 1.1rem;
   border-radius: var(--radius-full);
-  background: rgba(255, 255, 255, 0.16);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: #fff;
-  font-size: 0.8rem;
+  background: var(--primary-subtle);
+  border: 1px solid var(--border-medium);
+  color: var(--primary);
+  font-family: var(--font-heading);
+  font-size: 0.78rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  margin-bottom: 1.5rem;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-bottom: 1.2rem;
 }
 
-.hero-title {
-  font-size: clamp(2.6rem, 5.5vw, 4.5rem);
+.cafena-display-title {
+  font-family: var(--font-display);
+  font-size: clamp(4rem, 8.5vw, 6.6rem);
+  font-weight: 900;
+  line-height: 0.95;
+  letter-spacing: 0.04em;
+  color: var(--text-main);
+  text-transform: uppercase;
+  margin-bottom: 0.4rem;
+}
+
+.hero-subtitle-wrap {
+  position: relative;
+  display: inline-block;
+  margin-bottom: 1.4rem;
+}
+
+.hero-subtitle {
+  font-family: var(--font-heading);
+  font-size: clamp(1.4rem, 2.6vw, 2.1rem);
   font-weight: 800;
-  line-height: 1.1;
-  margin-bottom: 1.25rem;
-  color: #ffffff;
-  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.65);
+  line-height: 1.15;
+  letter-spacing: 0.05em;
+  color: var(--text-main);
+  text-transform: uppercase;
 }
 
-.hero-title span.serif-accent {
-  color: #f7ce96;
-  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.7);
+.highlight-caramel {
+  color: var(--primary);
+}
+
+.hero-brush {
+  margin-top: 5px;
 }
 
 .hero-description {
-  font-size: clamp(1.05rem, 1.8vw, 1.22rem);
-  line-height: 1.72;
-  color: #e5ded5;
-  margin-bottom: 1.8rem;
-  max-width: 680px;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
-}
-
-.hero-feature-pills {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.6rem;
-  margin-bottom: 2.2rem;
-}
-
-.hero-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 0.35rem 0.85rem;
-  border-radius: var(--radius-full);
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #f5f0eb;
-  font-size: 0.78rem;
-  font-weight: 600;
-  backdrop-filter: blur(8px);
-}
-
-.hero-pill.highlight {
-  background: rgba(21, 128, 61, 0.3);
-  border-color: rgba(34, 197, 94, 0.5);
-  color: #86efac;
+  font-family: var(--font-body);
+  font-size: clamp(1rem, 1.25vw, 1.15rem);
+  line-height: 1.75;
+  color: var(--text-muted);
+  margin-bottom: 2rem;
+  max-width: 580px;
 }
 
 .hero-cta-group {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 1rem;
-  margin-bottom: 3rem;
+  gap: 1.2rem;
+  margin-bottom: 2.8rem;
 }
 
-.hero-stats {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1.5rem;
-  padding-top: 2rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.15);
-}
-
-.stat-item h3 {
-  font-size: 1.8rem;
+/* Outline button matching "VIEW DEMOS" */
+.hero-btn-demos {
+  padding: 0.85rem 2rem;
+  border-radius: var(--radius-btn);
+  font-size: 0.95rem;
   font-weight: 700;
-  color: #ffffff;
+  border: 1.5px solid var(--text-main);
+  color: var(--text-main);
+}
+
+.hero-btn-demos:hover {
+  background: var(--text-main);
+  color: var(--bg-base);
+}
+
+/* Solid button matching "PURCHASE NOW" */
+.hero-btn-purchase {
+  padding: 0.85rem 2.2rem;
+  border-radius: var(--radius-btn);
+  font-size: 0.95rem;
+  font-weight: 700;
+  background: var(--primary);
+  color: #fff;
+  border: 1.5px solid var(--primary);
+}
+
+/* Cafena Stats Strip with Clean Vertical Dividers */
+.cafena-stats-strip {
   display: flex;
-  align-items: baseline;
-  gap: 3px;
+  align-items: center;
+  gap: 2rem;
+  padding-top: 1.8rem;
+  border-top: 1px solid var(--border-medium);
+  flex-wrap: wrap;
 }
 
-.stat-item h3 span {
+.cafena-stat-block {
+  display: flex;
+  flex-direction: column;
+}
+
+.cafena-stat-number {
+  font-family: var(--font-display);
+  font-size: 2.6rem;
+  line-height: 1;
+  font-weight: 900;
+  color: var(--text-main);
+  letter-spacing: 0.02em;
+}
+
+.cafena-stat-number sup {
   color: var(--primary);
-  font-size: 1.35rem;
+  font-size: 1.4rem;
+  margin-left: 2px;
+  font-weight: 700;
 }
 
-.stat-item h3 span.star-gold {
-  color: #fbbf24;
+.cafena-stat-label {
+  font-family: var(--font-heading);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-top: 0.3rem;
 }
 
-.stat-item p {
-  font-size: 0.82rem;
-  color: #cfc4b8;
-  margin-top: 0.2rem;
+.cafena-stat-divider {
+  width: 1px;
+  height: 44px;
+  background: var(--border-medium);
+}
+
+/* Right Column: 3D Interactive Coffee Splash Cup */
+.hero-right {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+}
+
+.hero-splash-scene {
+  perspective: 1200px;
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  justify-content: center;
+}
+
+.hero-splash-card {
+  position: relative;
+  transform-style: preserve-3d;
+  width: 100%;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.hero-splash-img-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-lg), 0 0 35px var(--primary-glow);
+  border: 1px solid var(--border-medium);
+  background: var(--bg-surface);
+}
+
+.hero-splash-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hero-splash-card:hover .hero-splash-img {
+  transform: scale(1.04);
+}
+
+.hero-splash-floating-tag {
+  position: absolute;
+  padding: 8px 16px;
+  background: var(--bg-surface-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-bright);
+  border-radius: var(--radius-full);
+  font-family: var(--font-heading);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-main);
+  box-shadow: var(--shadow-md);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+  animation: floatBadge 4s ease-in-out infinite alternate;
+}
+
+.hero-splash-floating-tag.tag-top-left {
+  top: 24px;
+  left: -12px;
+  animation-delay: 0s;
+}
+
+.hero-splash-floating-tag.tag-bottom-right {
+  bottom: 28px;
+  right: -12px;
+  animation-delay: 2s;
+}
+
+.hero-3d-brand-badge {
+  position: absolute;
+  top: 1.2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(24, 20, 17, 0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1.5px solid var(--border-bright);
+  padding: 8px 22px 8px 14px;
+  border-radius: var(--radius-full);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45), 0 0 25px var(--primary-glow);
+  z-index: 5;
+  color: #ffffff;
+  pointer-events: none;
+  animation: floatBadge 4s ease-in-out infinite alternate;
+}
+
+.hero-3d-brand-info {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+  text-align: left;
+}
+
+.hero-3d-brand-title {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  color: #ffffff;
+  line-height: 1;
+}
+
+.hero-3d-brand-tag {
+  font-family: var(--font-heading);
+  font-size: 0.65rem;
+  letter-spacing: 0.14em;
+  color: var(--primary);
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-top: 1px;
+}
+
+@keyframes floatBadge {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-8px); }
+}
+
+.brand-3d-glare {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: var(--radius-lg);
+  transition: opacity 0.2s ease;
 }
 
 /* --------------------------------------------------------------------------
-   6. SECTION HEADERS & FILTER CONTROLS
+   6. SECTION HEADERS & FILTER CONTROLS (CAFENA TYPOGRAPHY)
    -------------------------------------------------------------------------- */
 .section-header {
   text-align: center;
@@ -706,23 +949,30 @@ input, select, textarea {
 
 .section-tag {
   display: inline-block;
-  font-size: 0.8rem;
+  font-family: var(--font-heading);
+  font-size: 0.82rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.16em;
   color: var(--primary);
-  margin-bottom: 0.6rem;
+  margin-bottom: 0.5rem;
 }
 
 .section-title {
-  font-size: clamp(2.1rem, 3.8vw, 3rem);
-  font-weight: 800;
-  margin-bottom: 0.9rem;
+  font-family: var(--font-display);
+  font-size: clamp(2.4rem, 4.5vw, 3.6rem);
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-main);
+  margin-bottom: 0.8rem;
 }
 
 .section-desc {
+  font-family: var(--font-body);
   font-size: 1.05rem;
   color: var(--text-muted);
+  line-height: 1.65;
 }
 
 /* Category Filter Pills */
@@ -742,17 +992,20 @@ input, select, textarea {
 
 .filter-pill {
   white-space: nowrap;
-  padding: 0.65rem 1.25rem;
-  border-radius: var(--radius-full);
-  font-size: 0.9rem;
-  font-weight: 600;
+  padding: 0.65rem 1.35rem;
+  border-radius: var(--radius-btn);
+  font-family: var(--font-heading);
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   background: var(--bg-surface);
   color: var(--text-muted);
   border: 1px solid var(--border-medium);
   transition: all var(--transition-fast);
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.5rem;
 }
 
 .filter-pill:hover {
@@ -764,12 +1017,12 @@ input, select, textarea {
 .filter-pill.active {
   background: var(--primary);
   color: #fff;
-  border-color: transparent;
+  border-color: var(--primary);
   box-shadow: 0 4px 14px var(--primary-glow);
 }
 
 /* --------------------------------------------------------------------------
-   7. MENU GRID & CARDS
+   7. MENU GRID & CARDS (WARM IVORY CARDS WITH BRONZE ACCENTS)
    -------------------------------------------------------------------------- */
 .menu-controls {
   display: flex;
@@ -801,12 +1054,12 @@ input, select, textarea {
   padding: 0.75rem 1rem 0.75rem 2.75rem;
   background: var(--bg-surface);
   border: 1px solid var(--border-medium);
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-btn);
   color: var(--text-main);
   font-family: inherit;
   font-size: 0.92rem;
   outline: none;
-  transition: border-color var(--transition-fast);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .search-input:focus {
@@ -822,8 +1075,8 @@ input, select, textarea {
 
 .menu-card {
   background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -833,9 +1086,9 @@ input, select, textarea {
 }
 
 .menu-card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-5px);
   border-color: var(--primary);
-  box-shadow: var(--shadow-md), 0 0 20px var(--primary-glow);
+  box-shadow: var(--shadow-md), 0 0 24px var(--primary-glow);
 }
 
 .menu-card-img-wrap {
@@ -869,11 +1122,13 @@ input, select, textarea {
 }
 
 .badge-tag {
+  font-family: var(--font-heading);
   font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
-  padding: 4px 9px;
-  border-radius: var(--radius-full);
+  letter-spacing: 0.06em;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
   background: var(--bg-surface-glass);
   color: var(--primary);
   border: 1px solid var(--border-bright);
@@ -915,16 +1170,19 @@ input, select, textarea {
 }
 
 .menu-card-title {
-  font-size: 1.15rem;
+  font-family: var(--font-heading);
+  font-size: 1.2rem;
   font-weight: 700;
+  letter-spacing: 0.02em;
   color: var(--text-main);
 }
 
 .menu-card-price {
-  font-family: var(--font-heading);
-  font-size: 1.25rem;
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  font-weight: 900;
   color: var(--primary);
+  letter-spacing: 0.02em;
   white-space: nowrap;
 }
 
@@ -953,7 +1211,7 @@ input, select, textarea {
 }
 
 /* --------------------------------------------------------------------------
-   8. MODALS, DIALOGS & DRAWERS
+   8. MODALS, DIALOGS & DRAWERS (CAFENA LUXURY STYLING)
    -------------------------------------------------------------------------- */
 .modal-backdrop {
   position: fixed;
@@ -972,7 +1230,7 @@ input, select, textarea {
 .modal-card {
   background: var(--bg-surface);
   border: 1px solid var(--border-medium);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   max-width: 580px;
   width: 100%;
   max-height: 90vh;
@@ -994,89 +1252,88 @@ input, select, textarea {
 
 .modal-body {
   padding: 1.6rem;
+  overflow-y: auto;
 }
 
 .modal-footer {
   padding: 1.2rem 1.6rem;
   border-top: 1px solid var(--border-subtle);
-  background: var(--bg-surface-elevated);
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
+  gap: 0.8rem;
+  background: var(--bg-surface);
 }
 
-/* Cart Slide-Over Drawer */
+/* Input Fields across all forms */
+input[type="text"],
+input[type="email"],
+input[type="tel"],
+input[type="date"],
+input[type="time"],
+input[type="number"],
+input[type="password"],
+select,
+textarea {
+  background: var(--bg-surface);
+  color: var(--text-main);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-subtle);
+}
+
+/* Cart Drawer */
 .cart-drawer-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 210;
+  z-index: 250;
   background: var(--bg-overlay);
   backdrop-filter: blur(8px);
-  animation: fadeIn 0.2s ease-out;
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  justify-content: flex-end;
 }
 
 .cart-drawer {
-  position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 100%;
-  max-width: 460px;
   background: var(--bg-surface);
-  border-left: 1px solid var(--border-medium);
-  z-index: 220;
-  box-shadow: var(--shadow-lg);
+  width: 100%;
+  max-width: 440px;
+  height: 100%;
   display: flex;
   flex-direction: column;
+  box-shadow: var(--shadow-lg);
+  border-left: 1px solid var(--border-medium);
   animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.cart-header {
-  padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid var(--border-subtle);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: var(--bg-surface);
-}
-
-.cart-items-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 1.25rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.cart-item-card {
-  background: var(--bg-surface-elevated);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-}
-
-.cart-footer {
-  padding: 1.25rem 1.5rem;
-  border-top: 1px solid var(--border-subtle);
-  background: var(--bg-surface);
-  display: flex;
-  flex-direction: column;
-  gap: 0.9rem;
-}
-
 /* --------------------------------------------------------------------------
-   9. FOOTER STYLING
+   9. FOOTER STYLING (RICH DARK ROAST ESPRESSO)
    -------------------------------------------------------------------------- */
 .footer-root {
   background: var(--footer-bg);
+  color: #e5ded6;
   border-top: 1px solid var(--border-medium);
-  padding: 60px 0 30px 0;
+  padding: 70px 0 35px 0;
   position: relative;
   transition: background 0.35s ease;
+}
+
+.footer-root a {
+  color: #c7b8a8;
+  transition: color 0.2s;
+}
+
+.footer-root a:hover {
+  color: var(--primary);
 }
 
 /* --------------------------------------------------------------------------
@@ -1084,14 +1341,14 @@ input, select, textarea {
    -------------------------------------------------------------------------- */
 .dashboard-container {
   min-height: 100vh;
-  padding-top: 86px;
+  padding-top: 96px;
   padding-bottom: 60px;
 }
 
 .dash-header-card {
   background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
   padding: 1.5rem 1.8rem;
   margin-bottom: 2rem;
   display: flex;
@@ -1110,7 +1367,7 @@ input, select, textarea {
 
 .dash-stat-card {
   background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-medium);
   border-radius: var(--radius-md);
   padding: 1.25rem 1.4rem;
   position: relative;
@@ -1136,8 +1393,8 @@ input, select, textarea {
 
 .order-card {
   background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
   padding: 1.3rem;
   display: flex;
   flex-direction: column;
@@ -1147,12 +1404,12 @@ input, select, textarea {
 }
 
 .order-card.status-received {
-  border-color: rgba(217, 119, 6, 0.5);
-  box-shadow: 0 4px 18px rgba(217, 119, 6, 0.12);
+  border-color: var(--primary);
+  box-shadow: 0 4px 18px var(--primary-glow);
 }
 
 .order-card.status-brewing {
-  border-color: rgba(184, 98, 27, 0.5);
+  border-color: var(--primary-hover);
   box-shadow: 0 4px 18px var(--primary-glow);
 }
 
@@ -1185,12 +1442,8 @@ input, select, textarea {
 }
 
 @keyframes slideInRight {
-  from {
-    transform: translateX(100%);
-  }
-  to {
-    transform: translateX(0);
-  }
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
 }
 
 @keyframes pulseGlow {
@@ -1232,11 +1485,24 @@ input, select, textarea {
   .nav-links {
     display: none !important;
   }
-  .nav-divider {
-    display: none !important;
-  }
   .mobile-menu-btn {
     display: inline-flex !important;
+  }
+  .hero-grid {
+    grid-template-columns: 1fr;
+    gap: 3rem;
+  }
+  .hero-right {
+    order: -1;
+  }
+  .hero-splash-scene {
+    max-width: 360px;
+  }
+  .hero-sketch-patio {
+    display: none;
+  }
+  .hero-sketch-cup {
+    display: none;
   }
 }
 
@@ -1247,8 +1513,11 @@ input, select, textarea {
   .brand-status-chip {
     display: none !important;
   }
-  .hero-stats {
-    grid-template-columns: repeat(2, 1fr);
+  .cafena-stats-strip {
+    gap: 1.2rem;
+  }
+  .cafena-stat-number {
+    font-size: 2.2rem;
   }
 }
 
@@ -1256,11 +1525,8 @@ input, select, textarea {
   .brand-location-tag {
     display: none !important;
   }
-  .hero-title {
-    font-size: 2.3rem;
-  }
-  .hero-stats {
-    grid-template-columns: 1fr;
+  .cafena-display-title {
+    font-size: 3.4rem;
   }
   .dash-stats-grid {
     grid-template-columns: 1fr;
@@ -1271,4 +1537,177 @@ input, select, textarea {
   .cart-drawer {
     max-width: 100%;
   }
+  .hero-cta-group {
+    flex-direction: column;
+    width: 100%;
+  }
+  .hero-btn-demos,
+  .hero-btn-purchase {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   14. COFFEE-THEMED LOADING ANIMATION
+   -------------------------------------------------------------------------- */
+.coffee-loader-container {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: var(--bg-base);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.coffee-loader-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  padding: 2.5rem 3rem;
+  text-align: center;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.4rem;
+  max-width: 420px;
+  width: 100%;
+  animation: fadeIn 0.4s ease;
+}
+
+.coffee-cup-graphic {
+  position: relative;
+  width: 90px;
+  height: 70px;
+  margin-top: 15px;
+}
+
+.steam-container {
+  position: absolute;
+  top: -24px;
+  left: 20px;
+  width: 45px;
+  height: 24px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.steam-particle {
+  width: 6px;
+  height: 16px;
+  background: var(--primary);
+  border-radius: 4px;
+  opacity: 0.6;
+  filter: blur(1px);
+  animation: steamRise 1.6s infinite ease-out;
+}
+.steam-particle.s1 { animation-delay: 0s; }
+.steam-particle.s2 { animation-delay: 0.5s; }
+.steam-particle.s3 { animation-delay: 1s; }
+
+@keyframes steamRise {
+  0% { transform: translateY(0) scaleX(1); opacity: 0; }
+  50% { opacity: 0.8; }
+  100% { transform: translateY(-20px) scaleX(1.8); opacity: 0; }
+}
+
+.cup-body {
+  width: 70px;
+  height: 52px;
+  background: var(--bg-surface-elevated);
+  border: 3px solid var(--primary);
+  border-radius: 0 0 24px 24px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.cup-liquid {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 70%;
+  background: linear-gradient(180deg, var(--accent-caramel), var(--primary-dark));
+  animation: liquidFill 2s infinite ease-in-out alternate;
+}
+
+@keyframes liquidFill {
+  0% { height: 35%; }
+  100% { height: 85%; }
+}
+
+.cup-crema {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: #f5d19e;
+  opacity: 0.85;
+}
+
+.cup-handle {
+  position: absolute;
+  right: 4px;
+  top: 10px;
+  width: 22px;
+  height: 30px;
+  border: 3px solid var(--primary);
+  border-left: none;
+  border-radius: 0 14px 14px 0;
+}
+
+.cup-saucer {
+  position: absolute;
+  bottom: -4px;
+  left: -5px;
+  width: 84px;
+  height: 6px;
+  background: var(--primary);
+  border-radius: 4px;
+}
+
+.loader-brand-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.loader-message {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-main);
+  margin: 0.2rem 0;
+}
+
+.loader-progress-bar {
+  width: 100%;
+  height: 5px;
+  background: var(--bg-surface-elevated);
+  border-radius: 3px;
+  overflow: hidden;
+  margin: 0.4rem 0;
+}
+
+.loader-progress-fill {
+  width: 45%;
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), var(--accent-gold));
+  border-radius: 3px;
+  animation: progressPulse 1.4s infinite ease-in-out;
+}
+
+.loader-sub {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  display: block;
 }

@@ -1,34 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
-import { Hero } from './components/Hero';
-import { MenuSection } from './components/MenuSection';
-import { CustomizationModal } from './components/CustomizationModal';
-import { CartDrawer } from './components/CartDrawer';
-import { QRModal } from './components/QRModal';
-import { OrderTrackingModal } from './components/OrderTrackingModal';
-import { OffersSection } from './components/OffersSection';
+import { Hero3D } from './components/Hero3D';
+import { CustomerMenuSection } from './components/CustomerMenuSection';
+import { ReviewsSection } from './components/ReviewsSection';
 import { GallerySection } from './components/GallerySection';
 import { VideosSection } from './components/VideosSection';
 import { AboutSection } from './components/AboutSection';
 import { ContactSection } from './components/ContactSection';
 import { Footer } from './components/Footer';
+import { CoffeeLoader } from './components/CoffeeLoader';
+import { QROrderingView } from './components/QROrderingView';
 import { OwnerDashboard } from './components/OwnerDashboard';
+import { OwnerAuthModal } from './components/OwnerAuthModal';
 
 export function App() {
-  const [currentView, setCurrentView] = useState('site'); // 'site' | 'dashboard'
+  // Current Part: 'part1_customer' | 'part2_qr_ordering' | 'part3_owner'
+  const [currentPart, setCurrentPart] = useState('part1_customer');
   const [menuItems, setMenuItems] = useState([]);
-  const [offers, setOffers] = useState([]);
-  const [activeTable, setActiveTable] = useState('');
-  const [cartItems, setCartItems] = useState(() => {
+  const [activeTable, setActiveTable] = useState('Table 4');
+  const [isOwnerAuthOpen, setIsOwnerAuthOpen] = useState(false);
+  const [isOwnerAuthenticated, setIsOwnerAuthenticated] = useState(() => {
     try {
-      const saved = localStorage.getItem('coffeestand_cart');
-      return saved ? JSON.parse(saved) : [];
+      return localStorage.getItem('coffeestand_owner_auth') === 'true' ||
+             sessionStorage.getItem('coffeestand_owner_auth') === 'true';
     } catch {
-      return [];
+      return false;
     }
   });
 
-  const [activeOrdersCount, setActiveOrdersCount] = useState(0);
+  const [initialLoading, setInitialLoading] = useState(true);
 
   // Dual Theme: 'warm-cream' (Artisanal Day Roastery) | 'midnight-roast' (Velvet Evening Lounge)
   const [theme, setTheme] = useState(() => {
@@ -52,239 +52,188 @@ export function App() {
     setTheme((prev) => (prev === 'warm-cream' ? 'midnight-roast' : 'warm-cream'));
   };
 
-  // Modals state
-  const [customizingItem, setCustomizingItem] = useState(null);
-  const [isCartOpen, setIsCartOpen] = useState(false);
-  const [isQRModalOpen, setIsQRModalOpen] = useState(false);
-  const [isTrackingModalOpen, setIsTrackingModalOpen] = useState(false);
-  const [activePlacedOrder, setActivePlacedOrder] = useState(null);
-
-  // Persist cart to localStorage
+  // URL Query & Hash routing detection
   useEffect(() => {
-    try {
-      localStorage.setItem('coffeestand_cart', JSON.stringify(cartItems));
-    } catch {
-      // ignore
-    }
-  }, [cartItems]);
+    const parseUrl = () => {
+      const searchParams = new URLSearchParams(window.location.search);
+      let tableParam = searchParams.get('table');
 
-  // Read URL query params on load (e.g. ?table=Table%204 or #menu?table=Table%204)
-  useEffect(() => {
-    const parseTableParam = () => {
-      let params = new URLSearchParams(window.location.search);
-      let table = params.get('table');
-
-      // Also check hash (e.g., #menu?table=Table%204)
-      if (!table && window.location.hash.includes('table=')) {
+      if (!tableParam && window.location.hash.includes('table=')) {
         const hashQuery = window.location.hash.split('?')[1];
         if (hashQuery) {
           const hashParams = new URLSearchParams(hashQuery);
-          table = hashParams.get('table');
+          tableParam = hashParams.get('table');
         }
       }
 
-      if (table) {
-        setActiveTable(decodeURIComponent(table));
+      if (
+        tableParam ||
+        searchParams.has('order') ||
+        window.location.hash.includes('order')
+      ) {
+        if (tableParam) {
+          setActiveTable(decodeURIComponent(tableParam));
+        }
+        setCurrentPart('part2_qr_ordering');
+        return;
       }
 
-      // Check if URL specifies /admin or /dashboard
-      if (window.location.pathname.includes('/admin') || window.location.pathname.includes('/dashboard') || window.location.hash.includes('dashboard')) {
-        setCurrentView('dashboard');
+      if (
+        searchParams.has('owner') ||
+        searchParams.has('admin') ||
+        searchParams.has('dashboard') ||
+        window.location.hash.includes('owner') ||
+        window.location.hash.includes('dashboard') ||
+        window.location.hash.includes('admin') ||
+        window.location.pathname.includes('/owner') ||
+        window.location.pathname.includes('/admin') ||
+        window.location.pathname.includes('/dashboard')
+      ) {
+        if (isOwnerAuthenticated) {
+          setCurrentPart('part3_owner');
+        } else {
+          setIsOwnerAuthOpen(true);
+        }
       }
     };
 
-    parseTableParam();
-  }, []);
+    parseUrl();
+    window.addEventListener('hashchange', parseUrl);
+    return () => window.removeEventListener('hashchange', parseUrl);
+  }, [isOwnerAuthenticated]);
 
-  // Fetch initial menu and offers from backend API
-  const fetchMenuAndOffers = async () => {
-    try {
-      const [menuRes, offersRes, statsRes] = await Promise.all([
-        fetch('/api/menu'),
-        fetch('/api/offers'),
-        fetch('/api/dashboard/stats')
-      ]);
-
-      const menuData = await menuRes.json();
-      const offersData = await offersRes.json();
-      const statsData = await statsRes.json();
-
-      if (menuData.success) setMenuItems(menuData.items);
-      if (offersData.success) setOffers(offersData.offers);
-      if (statsData.success) setActiveOrdersCount(statsData.stats.activeOrders || 0);
-    } catch (err) {
-      console.warn('API fetch warning:', err);
-    }
-  };
-
+  // Fetch catalog
   useEffect(() => {
-    fetchMenuAndOffers();
-
-    // WebSocket listener for live updates
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws`;
-    let ws;
-
-    try {
-      ws = new WebSocket(wsUrl);
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (data.type === 'MENU_STOCK_CHANGED') {
-            setMenuItems((prev) =>
-              prev.map((item) =>
-                item.id === data.payload.id ? { ...item, in_stock: data.payload.in_stock } : item
-              )
-            );
-          } else if (data.type === 'NEW_ORDER') {
-            setActiveOrdersCount((prev) => prev + 1);
-          }
-        } catch {
-          // ignore
+    const fetchCatalog = async () => {
+      try {
+        const res = await fetch('/api/menu');
+        const data = await res.json();
+        if (data.success) {
+          setMenuItems(data.items);
         }
-      };
-    } catch (err) {
-      console.warn('WebSocket connection error:', err);
-    }
-
-    return () => {
-      if (ws) ws.close();
+      } catch (err) {
+        console.warn('Failed to load menu items:', err);
+      } finally {
+        // Smooth brief coffee brewing loader
+        setTimeout(() => setInitialLoading(false), 500);
+      }
     };
+
+    fetchCatalog();
   }, []);
 
-  // Cart operations
-  const handleAddToCart = (newItem) => {
-    setCartItems((prev) => [...prev, newItem]);
-    setIsCartOpen(true);
-  };
-
-  const handleUpdateQuantity = (index, newQty) => {
-    setCartItems((prev) =>
-      prev.map((item, i) => (i === index ? { ...item, quantity: newQty } : item))
-    );
-  };
-
-  const handleRemoveItem = (index) => {
-    setCartItems((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const handleClearCart = () => {
-    setCartItems([]);
-  };
-
-  const handleOrderPlaced = (order) => {
-    setActivePlacedOrder(order);
-    setIsTrackingModalOpen(true);
-  };
-
-  const handleApplyOffer = (code) => {
-    setIsCartOpen(true);
-    // Smooth scroll to menu if cart is empty
-    if (cartItems.length === 0) {
-      const menuEl = document.getElementById('menu');
-      if (menuEl) menuEl.scrollIntoView({ behavior: 'smooth' });
+  const handleOpenOwnerDashboard = () => {
+    if (isOwnerAuthenticated) {
+      setCurrentPart('part3_owner');
+    } else {
+      setIsOwnerAuthOpen(true);
     }
   };
 
-  const totalCartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+  const handleOwnerLogout = () => {
+    try {
+      localStorage.removeItem('coffeestand_owner_auth');
+      sessionStorage.removeItem('coffeestand_owner_auth');
+    } catch {
+      // ignore
+    }
+    setIsOwnerAuthenticated(false);
+    setCurrentPart('part1_customer');
+    window.location.hash = '';
+  };
+
+  const handleAuthenticated = () => {
+    setIsOwnerAuthenticated(true);
+    setCurrentPart('part3_owner');
+  };
+
+  // Render coffee loading animation on slow network or initial load
+  if (initialLoading) {
+    return <CoffeeLoader message="Roasting beans & brewing experience..." />;
+  }
 
   return (
     <div className="app-root">
-      {/* Global Navigation Bar */}
-      <Navbar
-        cartCount={totalCartCount}
-        onOpenCart={() => setIsCartOpen(true)}
-        onOpenQRModal={() => setIsQRModalOpen(true)}
-        activeTable={activeTable}
-        onSelectTable={(table) => setActiveTable(table)}
-        currentView={currentView}
-        onToggleDashboard={() => setCurrentView((v) => (v === 'site' ? 'dashboard' : 'site'))}
-        activeOrdersCount={activeOrdersCount}
-        theme={theme}
-        onToggleTheme={toggleTheme}
-      />
-
-      {/* Main View: Owner Dashboard or Customer Website */}
-      {currentView === 'dashboard' ? (
-        <OwnerDashboard onCloseDashboard={() => setCurrentView('site')} />
-      ) : (
-        <main>
-          {/* 1. Hero Landing Section */}
-          <Hero
-            onOpenMenu={() => {
-              const el = document.getElementById('menu');
-              if (el) el.scrollIntoView({ behavior: 'smooth' });
-            }}
-            onOpenQRModal={() => setIsQRModalOpen(true)}
-            onOpenTrackOrder={() => setIsTrackingModalOpen(true)}
-          />
-
-          {/* 2. Interactive Menu Section (QR Compatible) */}
-          <MenuSection
-            menuItems={menuItems}
-            onSelectItem={(item) => setCustomizingItem(item)}
-            activeTable={activeTable}
-            onOpenQRModal={() => setIsQRModalOpen(true)}
-          />
-
-          {/* 3. Current Deals & Offers Section */}
-          <OffersSection offers={offers} onApplyOffer={handleApplyOffer} />
-
-          {/* 4. Photo Gallery Section */}
-          <GallerySection />
-
-          {/* 5. Video Showcase & Ambiance Reels Section */}
-          <VideosSection />
-
-          {/* 6. About Café Story & Values Section */}
-          <AboutSection />
-
-          {/* 7. Contact, Table Reservation & Location Section */}
-          <ContactSection />
-
-          {/* Footer */}
-          <Footer
-            onOpenQRModal={() => setIsQRModalOpen(true)}
-            onOpenTrackOrder={() => setIsTrackingModalOpen(true)}
-          />
-        </main>
-      )}
-
-      {/* Modals & Slide-Overs */}
-      {customizingItem && (
-        <CustomizationModal
-          item={customizingItem}
-          onClose={() => setCustomizingItem(null)}
-          onAddToCart={handleAddToCart}
+      {/* =============================================================== */}
+      {/* PART 2: STANDALONE QR CODE ORDERING SYSTEM (TABLE-SPECIFIC)     */}
+      {/* =============================================================== */}
+      {currentPart === 'part2_qr_ordering' ? (
+        <QROrderingView
+          table={activeTable}
+          onBackToSite={() => {
+            setCurrentPart('part1_customer');
+            window.location.hash = '';
+          }}
+          theme={theme}
+          onToggleTheme={toggleTheme}
         />
+      ) : currentPart === 'part3_owner' && isOwnerAuthenticated ? (
+        /* =============================================================== */
+        /* PART 3: OWNER DASHBOARD (MANAGEMENT PANEL)                     */
+        /* =============================================================== */
+        <OwnerDashboard
+          onCloseDashboard={() => {
+            setCurrentPart('part1_customer');
+            window.location.hash = '';
+          }}
+          onLogout={handleOwnerLogout}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+        />
+      ) : (
+        /* =============================================================== */
+        /* PART 1: CUSTOMER EXPERIENCE WEBSITE                            */
+        /* =============================================================== */
+        <>
+          <Navbar
+            theme={theme}
+            onToggleTheme={toggleTheme}
+          />
+
+          <main>
+            {/* 1. Hero Landing with 3D Brand Animation */}
+            <Hero3D
+              onOpenMenu={() => {
+                const el = document.getElementById('menu');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+              }}
+              onOpenReserve={() => {
+                const el = document.getElementById('contact');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+              }}
+            />
+
+            {/* 2. Interactive Menu (Browsing without ordering) */}
+            <CustomerMenuSection menuItems={menuItems} />
+
+            {/* 3. Photo Gallery */}
+            <GallerySection />
+
+            {/* 4. Cinematic Reels & Atmosphere */}
+            <VideosSection />
+
+            {/* 5. Café Heritage & Story */}
+            <AboutSection />
+
+            {/* 6. Customer Reviews & Feedback Submission Form */}
+            <ReviewsSection />
+
+            {/* 7. Table Reservation & Contact */}
+            <ContactSection />
+
+            {/* Footer with discreet Owner Access trigger */}
+            <Footer
+              onOpenOwnerAuth={handleOpenOwnerDashboard}
+            />
+          </main>
+        </>
       )}
 
-      <CartDrawer
-        isOpen={isCartOpen}
-        onClose={() => setIsCartOpen(false)}
-        cartItems={cartItems}
-        onUpdateQuantity={handleUpdateQuantity}
-        onRemoveItem={handleRemoveItem}
-        onClearCart={handleClearCart}
-        activeTable={activeTable}
-        onOrderPlaced={handleOrderPlaced}
-      />
-
-      <QRModal
-        isOpen={isQRModalOpen}
-        onClose={() => setIsQRModalOpen(false)}
-        initialTable={activeTable || 'Table 4'}
-        onSelectTable={(table) => {
-          setActiveTable(table);
-          // Update URL hash without reload
-          window.location.hash = `menu?table=${encodeURIComponent(table)}`;
-        }}
-      />
-
-      <OrderTrackingModal
-        isOpen={isTrackingModalOpen}
-        onClose={() => setIsTrackingModalOpen(false)}
-        initialOrder={activePlacedOrder}
+      {/* Owner Authentication Modal */}
+      <OwnerAuthModal
+        isOpen={isOwnerAuthOpen}
+        onClose={() => setIsOwnerAuthOpen(false)}
+        onAuthenticated={handleAuthenticated}
       />
     </div>
   );

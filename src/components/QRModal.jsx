@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, QrCode, Printer, Download, ExternalLink, Check, Coffee, Sparkles } from 'lucide-react';
 import QRCode from 'qrcode';
+import { CafenaLogoStamp } from './CafenaDecorations';
 
 const TABLES = [
   'Table 1', 'Table 2', 'Table 3', 'Table 4', 'Table 5',
@@ -45,7 +46,7 @@ export function QRModal({ isOpen, onClose, initialTable = 'Table 4', onSelectTab
 
   const handleDownload = () => {
     const link = document.createElement('a');
-    link.download = `coffeestand-qr-${selectedTable.toLowerCase().replace(/\s+/g, '-')}.png`;
+    link.download = `cafena-qr-${selectedTable.toLowerCase().replace(/\s+/g, '-')}.png`;
     link.href = qrDataUrl;
     link.click();
   };
@@ -124,22 +125,9 @@ export function QRModal({ isOpen, onClose, initialTable = 'Table 4', onSelectTab
           >
             {/* Top Standee Branding */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginBottom: '0.6rem' }}>
-              <div
-                style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '8px',
-                  background: '#ea8b39',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#fff'
-                }}
-              >
-                <Coffee size={18} />
-              </div>
-              <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.5rem', fontWeight: 800, color: '#1a140f', letterSpacing: '0.02em', margin: 0 }}>
-                COFFEE STAND
+              <CafenaLogoStamp size={36} />
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.75rem', fontWeight: 900, color: '#1a140f', letterSpacing: '0.04em', margin: 0 }}>
+                CAFENA
               </h2>
             </div>
 
