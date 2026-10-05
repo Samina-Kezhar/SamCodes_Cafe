@@ -52,6 +52,7 @@ export function initDatabase() {
       payment_status TEXT DEFAULT 'pending',
       status TEXT DEFAULT 'received',
       kitchen_notes TEXT,
+      estimated_prep_mins INTEGER DEFAULT 10,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -132,10 +133,17 @@ export function initDatabase() {
     }
   } else {
     // Update existing menu items with accurate matching photos & updated Cafena names
-    const updatePhoto = db.prepare(`UPDATE menu_items SET name = ?, image = ? WHERE id = ?`);
+    const updatePhoto = db.prepare(`UPDATE menu_items SET name = ?, image = ?, customizable_json = ? WHERE id = ?`);
     for (const item of initialMenuItems) {
-      updatePhoto.run(item.name, item.image, item.id);
+      updatePhoto.run(item.name, item.image, JSON.stringify(item.customizable || {}), item.id);
     }
+  }
+
+  // Ensure estimated_prep_mins column exists in orders
+  try {
+    db.prepare('ALTER TABLE orders ADD COLUMN estimated_prep_mins INTEGER DEFAULT 10').run();
+  } catch {
+    // Column already exists
   }
 
   // Migrate any legacy review or order records from Coffee Stand to Cafena

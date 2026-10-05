@@ -24,11 +24,14 @@ app.use(express.json());
 // Serve static public folder (images, icons)
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
-// Broadcast to all connected WebSocket clients
-export function broadcast(type, payload) {
+// Broadcast helper with role awareness to prevent customer data leaks
+export function broadcast(type, payload, targetRole = null) {
   const message = JSON.stringify({ type, payload, timestamp: new Date().toISOString() });
   wss.clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
+      if (targetRole && client.role !== targetRole) {
+        return; // Only send to targeted role (e.g. 'owner')
+      }
       try {
         client.send(message);
       } catch (err) {
@@ -39,13 +42,17 @@ export function broadcast(type, payload) {
 }
 
 wss.on('connection', (ws) => {
-  // Send welcome ping
-  ws.send(JSON.stringify({ type: 'CONNECTED', message: 'Connected to Cafena Realtime Kitchen Service' }));
+  ws.role = 'customer'; // Default role is customer
+  ws.send(JSON.stringify({ type: 'CONNECTED', message: 'Connected to Cafena Realtime Service' }));
 
   ws.on('message', (message) => {
     try {
       const data = JSON.parse(message);
-      if (data.type === 'PING') {
+      if (data.type === 'IDENTIFY') {
+        if (data.role === 'owner') {
+          ws.role = 'owner';
+        }
+      } else if (data.type === 'PING') {
         ws.send(JSON.stringify({ type: 'PONG' }));
       }
     } catch {
@@ -59,7 +66,8 @@ function formatOrder(row) {
   if (!row) return null;
   return {
     ...row,
-    items: JSON.parse(row.items_json || '[]')
+    items: JSON.parse(row.items_json || '[]'),
+    estimated_prep_mins: row.estimated_prep_mins || 10
   };
 }
 
@@ -500,6 +508,11 @@ app.post('/api/orders', (req, res) => {
       }
     }
 
+    // Calculate estimated prep time based on items & order volume
+    const maxPrep = Math.max(...validatedItems.map((it) => parseInt(it.prep_time_mins || 8, 10)), 8);
+    const itemVolumeBuffer = Math.min(6, Math.max(0, (validatedItems.length - 1) * 2));
+    const estimatedPrepMins = maxPrep + itemVolumeBuffer;
+
     const total = Math.max(0, Math.round((subtotal + tax - discount) * 100) / 100);
     const orderId = 'CS-' + Math.floor(1000 + Math.random() * 9000);
     const now = new Date().toISOString();
@@ -508,9 +521,9 @@ app.post('/api/orders', (req, res) => {
       INSERT INTO orders (
         id, customer_name, customer_phone, table_number, order_type,
         items_json, subtotal, tax, discount, coupon_code, total,
-        payment_method, payment_status, status, kitchen_notes,
+        payment_method, payment_status, status, kitchen_notes, estimated_prep_mins,
         created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     insert.run(
@@ -529,14 +542,15 @@ app.post('/api/orders', (req, res) => {
       payment_method === 'upi' ? 'paid' : 'pending',
       'received',
       kitchen_notes || '',
+      estimatedPrepMins,
       now,
       now
     );
 
     const savedOrder = formatOrder(db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId));
 
-    // Broadcast new order in real-time to owner dashboard!
-    broadcast('NEW_ORDER', savedOrder);
+    // Broadcast new order in real-time to owner dashboard only (prevents customer data leaks)
+    broadcast('NEW_ORDER', savedOrder, 'owner');
 
     res.status(201).json({ success: true, order: savedOrder });
   } catch (error) {

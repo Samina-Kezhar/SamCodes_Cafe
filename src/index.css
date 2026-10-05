@@ -1711,3 +1711,40 @@ textarea:focus {
   color: var(--text-dim);
   display: block;
 }
+
+/* ========================================================================= */
+/* MENU CAROUSEL & DISH SLIDER STYLES                                        */
+/* ========================================================================= */
+.menu-carousel-track {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+.menu-carousel-track::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+.menu-carousel-card {
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+
+.menu-carousel-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.35);
+}
+
+.carousel-arrow-btn:not(:disabled):hover {
+  background: var(--primary) !important;
+  color: #ffffff !important;
+  border-color: var(--primary) !important;
+  transform: scale(1.08);
+}
+
+@media (max-width: 640px) {
+  .menu-carousel-card {
+    flex: 0 0 260px !important;
+    max-width: 260px !important;
+  }
+}
+

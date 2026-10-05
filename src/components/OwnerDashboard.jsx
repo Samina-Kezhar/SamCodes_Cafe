@@ -119,7 +119,14 @@ export function OwnerDashboard({ onCloseDashboard, onLogout, theme = 'modern-lat
     const connectWs = () => {
       try {
         ws = new WebSocket(wsUrl);
-        ws.onopen = () => setWsConnected(true);
+        ws.onopen = () => {
+          setWsConnected(true);
+          try {
+            ws.send(JSON.stringify({ type: 'IDENTIFY', role: 'owner' }));
+          } catch {
+            // ignore
+          }
+        };
 
         ws.onmessage = (event) => {
           try {
@@ -145,6 +152,17 @@ export function OwnerDashboard({ onCloseDashboard, onLogout, theme = 'modern-lat
               setMenuItems((prev) =>
                 prev.map((m) => (m.id === data.payload.id ? { ...m, in_stock: data.payload.in_stock } : m))
               );
+            } else if (data.type === 'MENU_ITEM_UPDATED') {
+              setMenuItems((prev) =>
+                prev.map((m) => (m.id === data.payload.id ? data.payload : m))
+              );
+            } else if (data.type === 'MENU_ITEM_ADDED') {
+              setMenuItems((prev) => {
+                if (prev.some((m) => m.id === data.payload.id)) return prev;
+                return [...prev, data.payload];
+              });
+            } else if (data.type === 'MENU_ITEM_DELETED') {
+              setMenuItems((prev) => prev.filter((m) => m.id !== data.payload.id));
             } else if (data.type === 'NEW_CONTACT_MESSAGE' || data.type === 'NEW_REVIEW' || data.type === 'INVENTORY_UPDATED') {
               fetchData();
             }

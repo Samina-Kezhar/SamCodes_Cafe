@@ -6,7 +6,7 @@ export const initialMenuItems = [
     category: "signature_frappes",
     price: 280,
     description: "Our house special blended frappe crafted with double espresso, velvety milk, chocolate shavings & mountain of whipped cream.",
-    image: "/images/signature-frappe.jpg",
+    image: "/images/cafena-signature-frappe.jpg",
     tags: ["Best Seller", "Signature"],
     is_veg: 1,
     in_stock: 1,
@@ -16,7 +16,12 @@ export const initialMenuItems = [
         { name: "Regular (350ml)", price: 0 },
         { name: "Large (480ml)", price: 50 }
       ],
-      milk: ["Regular Milk", "Oat Milk (+₹50)", "Almond Milk (+₹50)", "Soy Milk (+₹40)"],
+      milk: [
+        { name: "Regular Dairy Milk", price: 0 },
+        { name: "Oat Milk", price: 50 },
+        { name: "Almond Milk", price: 50 },
+        { name: "Soy Milk", price: 40 }
+      ],
       sweetness: ["Regular Sweet", "Less Sweet", "No Sugar Added"],
       addons: [
         { name: "Extra Espresso Shot", price: 40 },
@@ -32,21 +37,26 @@ export const initialMenuItems = [
     category: "signature_frappes",
     price: 310,
     description: "Original Lotus Biscoff spread blended with espresso, topped with whipped cream, golden caramel swirl & crunchy biscuit crumbs.",
-    image: "https://images.unsplash.com/photo-1572490122747-3968b75cc699?auto=format&fit=crop&w=800&q=80",
+    image: "/images/signature-frappe.jpg",
     tags: ["Must Try", "Trending"],
     is_veg: 1,
     in_stock: 1,
     prep_time_mins: 8,
     customizable: {
       sizes: [
-        { name: "Regular", price: 0 },
-        { name: "Large", price: 50 }
+        { name: "Regular (350ml)", price: 0 },
+        { name: "Large (480ml)", price: 50 }
       ],
-      milk: ["Regular Milk", "Oat Milk (+₹50)", "Almond Milk (+₹50)"],
+      milk: [
+        { name: "Regular Dairy Milk", price: 0 },
+        { name: "Oat Milk", price: 50 },
+        { name: "Almond Milk", price: 50 }
+      ],
       sweetness: ["Regular Sweet", "Less Sweet"],
       addons: [
         { name: "Extra Biscoff Cookie", price: 30 },
-        { name: "Extra Espresso Shot", price: 40 }
+        { name: "Extra Espresso Shot", price: 40 },
+        { name: "Caramel Drizzle", price: 25 }
       ]
     }
   },
@@ -56,7 +66,7 @@ export const initialMenuItems = [
     category: "signature_frappes",
     price: 320,
     description: "Decadent Nutella ribboned with roasted hazelnut syrup, espresso, and topped with chopped praline & whipped cream.",
-    image: "https://images.unsplash.com/photo-1579888944880-d98341245702?auto=format&fit=crop&w=800&q=80",
+    image: "/images/nutella-hazelnut-frappe.jpg",
     tags: ["Chef Special"],
     is_veg: 1,
     in_stock: 1,
@@ -66,11 +76,15 @@ export const initialMenuItems = [
         { name: "Regular", price: 0 },
         { name: "Large", price: 50 }
       ],
-      milk: ["Regular Milk", "Oat Milk (+₹50)"],
+      milk: [
+        { name: "Regular Dairy Milk", price: 0 },
+        { name: "Oat Milk", price: 50 }
+      ],
       sweetness: ["Regular Sweet", "Less Sweet"],
       addons: [
         { name: "Extra Nutella Shot", price: 40 },
-        { name: "Choco Fudge Drizzle", price: 25 }
+        { name: "Choco Fudge Drizzle", price: 25 },
+        { name: "Crushed Hazelnuts", price: 30 }
       ]
     }
   },
@@ -80,16 +94,25 @@ export const initialMenuItems = [
     category: "signature_frappes",
     price: 290,
     description: "70% Belgian dark chocolate fudge blended with our bold house roast and chilled milk, topped with cocoa dusting.",
-    image: "https://images.unsplash.com/photo-1578314675249-a6910f80cc4e?auto=format&fit=crop&w=800&q=80",
+    image: "/images/dark-mocha-frappe.jpg",
     tags: ["Bestseller"],
     is_veg: 1,
     in_stock: 1,
     prep_time_mins: 8,
     customizable: {
-      sizes: [{ name: "Regular", price: 0 }, { name: "Large", price: 50 }],
-      milk: ["Regular Milk", "Oat Milk (+₹50)"],
+      sizes: [
+        { name: "Regular", price: 0 },
+        { name: "Large", price: 50 }
+      ],
+      milk: [
+        { name: "Regular Dairy Milk", price: 0 },
+        { name: "Oat Milk", price: 50 }
+      ],
       sweetness: ["Regular Sweet", "Dark & Bold (Less Sweet)"],
-      addons: [{ name: "Extra Espresso Shot", price: 40 }]
+      addons: [
+        { name: "Extra Espresso Shot", price: 40 },
+        { name: "Dark Choco Chips", price: 25 }
+      ]
     }
   },
 
@@ -110,10 +133,13 @@ export const initialMenuItems = [
         { name: "Standard (220ml)", price: 0 },
         { name: "Mug (320ml)", price: 40 }
       ],
-      milk: ["Full Cream Dairy", "Oat Milk (+₹50)", "Almond Milk (+₹50)"],
+      milk: [
+        { name: "Full Cream Dairy", price: 0 },
+        { name: "Oat Milk", price: 50 },
+        { name: "Almond Milk", price: 50 }
+      ],
       sweetness: ["Unsweetened", "Brown Sugar on side", "Stevia"],
       addons: [
-        { name: "Cinnamon Dust", price: 0 },
         { name: "Vanilla Syrup", price: 30 },
         { name: "Extra Espresso Shot", price: 40 }
       ]
@@ -131,10 +157,19 @@ export const initialMenuItems = [
     in_stock: 1,
     prep_time_mins: 6,
     customizable: {
-      sizes: [{ name: "Regular", price: 0 }, { name: "Large", price: 40 }],
-      milk: ["Full Cream Dairy", "Oat Milk (+₹50)"],
+      sizes: [
+        { name: "Regular", price: 0 },
+        { name: "Large", price: 40 }
+      ],
+      milk: [
+        { name: "Full Cream Dairy", price: 0 },
+        { name: "Oat Milk", price: 50 }
+      ],
       sweetness: ["Signature Sweet", "Less Sweet"],
-      addons: [{ name: "Salted Caramel Drizzle", price: 25 }]
+      addons: [
+        { name: "Salted Caramel Drizzle", price: 25 },
+        { name: "Extra Shot", price: 40 }
+      ]
     }
   },
   {
@@ -149,10 +184,19 @@ export const initialMenuItems = [
     in_stock: 1,
     prep_time_mins: 6,
     customizable: {
-      sizes: [{ name: "Regular", price: 0 }, { name: "Large", price: 40 }],
-      milk: ["Dairy Milk", "Oat Milk (+₹50)"],
+      sizes: [
+        { name: "Regular", price: 0 },
+        { name: "Large", price: 40 }
+      ],
+      milk: [
+        { name: "Dairy Milk", price: 0 },
+        { name: "Oat Milk", price: 50 }
+      ],
       sweetness: ["Regular Sweet", "Less Sweet"],
-      addons: [{ name: "Extra Shot", price: 40 }]
+      addons: [
+        { name: "Extra Shot", price: 40 },
+        { name: "Whipped Cream", price: 30 }
+      ]
     }
   },
   {
@@ -167,10 +211,16 @@ export const initialMenuItems = [
     in_stock: 1,
     prep_time_mins: 4,
     customizable: {
-      sizes: [{ name: "Doppio (60ml)", price: 0 }],
-      milk: ["No Milk"],
+      sizes: [
+        { name: "Doppio (60ml)", price: 0 }
+      ],
+      milk: [
+        { name: "No Milk", price: 0 }
+      ],
       sweetness: ["No Sugar", "Sugar on Side"],
-      addons: [{ name: "Hot Water (Americano Style)", price: 20 }]
+      addons: [
+        { name: "Hot Water (Americano Style)", price: 20 }
+      ]
     }
   },
 
@@ -181,16 +231,22 @@ export const initialMenuItems = [
     category: "cold_brews",
     price: 240,
     description: "Traditional slow-dripped bold dark roast over sweetened condensed milk and crushed crystal ice.",
-    image: "https://images.unsplash.com/photo-1517256064527-09c73fc73e38?auto=format&fit=crop&w=800&q=80",
+    image: "/images/vietnamese-iced-coffee.jpg",
     tags: ["Customer Favorite"],
     is_veg: 1,
     in_stock: 1,
     prep_time_mins: 7,
     customizable: {
-      sizes: [{ name: "Standard (300ml)", price: 0 }],
-      milk: ["Condensed Milk Blend"],
+      sizes: [
+        { name: "Standard (300ml)", price: 0 }
+      ],
+      milk: [
+        { name: "Condensed Milk Blend", price: 0 }
+      ],
       sweetness: ["Traditional Sweet", "Less Sweet"],
-      addons: [{ name: "Extra Espresso Shot", price: 40 }]
+      addons: [
+        { name: "Extra Espresso Shot", price: 40 }
+      ]
     }
   },
   {
@@ -199,16 +255,25 @@ export const initialMenuItems = [
     category: "cold_brews",
     price: 250,
     description: "18-hour slow-steeped smooth cold brew coffee topped with a cascading cloud of house-made vanilla sweet cream.",
-    image: "https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=800&q=80",
+    image: "/images/vanilla-cold-brew.jpg",
     tags: ["Smooth", "Low Acidity"],
     is_veg: 1,
     in_stock: 1,
     prep_time_mins: 5,
     customizable: {
-      sizes: [{ name: "Regular", price: 0 }, { name: "Large", price: 50 }],
-      milk: ["Sweet Cream Top", "Oat Sweet Cream (+₹40)"],
+      sizes: [
+        { name: "Regular", price: 0 },
+        { name: "Large", price: 50 }
+      ],
+      milk: [
+        { name: "Vanilla Sweet Cream Top", price: 0 },
+        { name: "Oat Sweet Cream", price: 40 }
+      ],
       sweetness: ["Mildly Sweet", "Unsweetened Brew"],
-      addons: [{ name: "Caramel Float", price: 25 }]
+      addons: [
+        { name: "Caramel Float", price: 25 },
+        { name: "Extra Cold Brew Concentrate", price: 35 }
+      ]
     }
   },
   {
@@ -223,10 +288,18 @@ export const initialMenuItems = [
     in_stock: 1,
     prep_time_mins: 6,
     customizable: {
-      sizes: [{ name: "Regular", price: 0 }, { name: "Large", price: 50 }],
-      milk: ["Full Cream Dairy"],
+      sizes: [
+        { name: "Regular", price: 0 },
+        { name: "Large", price: 50 }
+      ],
+      milk: [
+        { name: "Full Cream Dairy", price: 0 }
+      ],
       sweetness: ["Sweet", "Medium Sweet"],
-      addons: [{ name: "Extra Gelato Scoop", price: 50 }]
+      addons: [
+        { name: "Extra Gelato Scoop", price: 50 },
+        { name: "Chocolate Drizzle", price: 20 }
+      ]
     }
   },
 
@@ -243,10 +316,14 @@ export const initialMenuItems = [
     in_stock: 1,
     prep_time_mins: 5,
     customizable: {
-      sizes: [{ name: "Tall Glass (380ml)", price: 0 }],
-      milk: ["No Milk"],
+      sizes: [
+        { name: "Tall Glass (380ml)", price: 0 }
+      ],
+      milk: [],
       sweetness: ["Crisp & Balanced", "Low Sugar"],
-      addons: [{ name: "Chia Seeds", price: 20 }, { name: "Lemon Wheel", price: 0 }]
+      addons: [
+        { name: "Chia Seeds", price: 20 }
+      ]
     }
   },
   {
@@ -255,16 +332,20 @@ export const initialMenuItems = [
     category: "refreshers",
     price: 210,
     description: "Sun-ripened peach puree, passionfruit pulp, sparkling soda, and torn fresh mint leaves over cracked ice.",
-    image: "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=800&q=80",
+    image: "/images/peach-sparkler.jpg",
     tags: ["Sparkling", "Fruity"],
     is_veg: 1,
     in_stock: 1,
     prep_time_mins: 5,
     customizable: {
-      sizes: [{ name: "Tall Glass", price: 0 }],
-      milk: ["No Milk"],
+      sizes: [
+        { name: "Tall Glass", price: 0 }
+      ],
+      milk: [],
       sweetness: ["Regular Sweet", "Extra Tangy"],
-      addons: []
+      addons: [
+        { name: "Extra Peach Puree", price: 30 }
+      ]
     }
   },
   {
@@ -273,16 +354,26 @@ export const initialMenuItems = [
     category: "refreshers",
     price: 270,
     description: "Authentic stone-ground Japanese ceremonial grade Uji matcha whisked fresh and layered over chilled milk with honey.",
-    image: "https://images.unsplash.com/photo-1536256263959-770b48d82b0a?auto=format&fit=crop&w=800&q=80",
+    image: "/images/iced-matcha-latte.jpg",
     tags: ["Antioxidant Rich", "Superfood"],
     is_veg: 1,
     in_stock: 1,
     prep_time_mins: 6,
     customizable: {
-      sizes: [{ name: "Regular", price: 0 }, { name: "Large", price: 50 }],
-      milk: ["Dairy Milk", "Oat Milk (+₹50)", "Almond Milk (+₹50)"],
+      sizes: [
+        { name: "Regular", price: 0 },
+        { name: "Large", price: 50 }
+      ],
+      milk: [
+        { name: "Dairy Milk", price: 0 },
+        { name: "Oat Milk", price: 50 },
+        { name: "Almond Milk", price: 50 }
+      ],
       sweetness: ["Light Honey", "Unsweetened"],
-      addons: [{ name: "Vanilla Shot", price: 30 }]
+      addons: [
+        { name: "Vanilla Shot", price: 30 },
+        { name: "Double Matcha Whisk", price: 60 }
+      ]
     }
   },
 
@@ -299,7 +390,9 @@ export const initialMenuItems = [
     in_stock: 1,
     prep_time_mins: 12,
     customizable: {
-      sizes: [{ name: "Full Panini (2 Halves)", price: 0 }],
+      sizes: [
+        { name: "Full Panini (2 Halves)", price: 0 }
+      ],
       milk: [],
       sweetness: [],
       addons: [
@@ -315,16 +408,22 @@ export const initialMenuItems = [
     category: "sandwiches",
     price: 250,
     description: "Gooey blend of aged cheddar, creamy mozzarella, and parmesan with garlic herb butter on toasted golden multigrain sourdough.",
-    image: "https://images.unsplash.com/photo-1528735602780-2552fd46c7af?auto=format&fit=crop&w=800&q=80",
+    image: "/images/pesto-cheese-melt.jpg",
     tags: ["Cheese Pull", "Comfort Food"],
     is_veg: 1,
     in_stock: 1,
     prep_time_mins: 10,
     customizable: {
-      sizes: [{ name: "Standard", price: 0 }],
+      sizes: [
+        { name: "Standard", price: 0 }
+      ],
       milk: [],
       sweetness: [],
-      addons: [{ name: "Chipotle Dip", price: 25 }, { name: "Sundried Tomatoes", price: 30 }]
+      addons: [
+        { name: "Extra Cheese Melt", price: 40 },
+        { name: "Chipotle Dip", price: 25 },
+        { name: "Sundried Tomatoes", price: 30 }
+      ]
     }
   },
   {
@@ -333,16 +432,21 @@ export const initialMenuItems = [
     category: "sandwiches",
     price: 240,
     description: "Sweet American corn, black olives, pickled jalapeños, bell peppers, and melted cheese seasoned with Mexican smoked spices.",
-    image: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?auto=format&fit=crop&w=800&q=80",
-    tags: ["Spicy"],
+    image: "/images/mexican-jalapeno-toast.jpg",
+    tags: ["Spicy", "Authentic Veg"],
     is_veg: 1,
     in_stock: 1,
     prep_time_mins: 10,
     customizable: {
-      sizes: [{ name: "Standard", price: 0 }],
+      sizes: [
+        { name: "Standard", price: 0 }
+      ],
       milk: [],
       sweetness: [],
-      addons: [{ name: "Extra Cheese", price: 40 }]
+      addons: [
+        { name: "Extra Cheese", price: 40 },
+        { name: "Mexican Salsa Dip", price: 25 }
+      ]
     }
   },
 
@@ -359,7 +463,9 @@ export const initialMenuItems = [
     in_stock: 1,
     prep_time_mins: 12,
     customizable: {
-      sizes: [{ name: "Full Waffle Stack", price: 0 }],
+      sizes: [
+        { name: "Full Waffle Stack", price: 0 }
+      ],
       milk: [],
       sweetness: [],
       addons: [
@@ -375,16 +481,21 @@ export const initialMenuItems = [
     category: "waffles_desserts",
     price: 310,
     description: "Fresh hot waffle smothered in melted Biscoff cookie spread, sprinkled with spiced biscuit crumble and white chocolate drops.",
-    image: "https://images.unsplash.com/photo-1568051243851-f9b136146e97?auto=format&fit=crop&w=800&q=80",
+    image: "/images/biscoff-waffle.jpg",
     tags: ["Trending"],
     is_veg: 1,
     in_stock: 1,
     prep_time_mins: 12,
     customizable: {
-      sizes: [{ name: "Full Waffle", price: 0 }],
+      sizes: [
+        { name: "Full Waffle", price: 0 }
+      ],
       milk: [],
       sweetness: [],
-      addons: [{ name: "Vanilla Gelato", price: 50 }]
+      addons: [
+        { name: "Vanilla Gelato Scoop", price: 50 },
+        { name: "Extra Biscoff Sauce", price: 35 }
+      ]
     }
   },
   {
@@ -393,16 +504,21 @@ export const initialMenuItems = [
     category: "waffles_desserts",
     price: 240,
     description: "Gooey chocolate walnut fudge brownie served on a smoking sizzler plate with cold vanilla gelato and hot melted chocolate fountain sauce.",
-    image: "https://images.unsplash.com/photo-1606313564200-e75d5e30476c?auto=format&fit=crop&w=800&q=80",
+    image: "/images/sizzling-brownie.jpg",
     tags: ["Warm & Cold"],
     is_veg: 1,
     in_stock: 1,
     prep_time_mins: 8,
     customizable: {
-      sizes: [{ name: "Standard", price: 0 }],
+      sizes: [
+        { name: "Standard", price: 0 }
+      ],
       milk: [],
       sweetness: [],
-      addons: [{ name: "Extra Hot Chocolate Shot", price: 35 }]
+      addons: [
+        { name: "Extra Hot Chocolate Shot", price: 35 },
+        { name: "Extra Gelato Scoop", price: 50 }
+      ]
     }
   },
 
@@ -413,16 +529,22 @@ export const initialMenuItems = [
     category: "snacks",
     price: 170,
     description: "Golden crispy crinkle-cut potatoes tossed in African bird's eye chili seasoning, served with creamy garlic dip.",
-    image: "https://images.unsplash.com/photo-1576107232684-1279f3908594?auto=format&fit=crop&w=800&q=80",
+    image: "/images/periperi-fries.jpg",
     tags: ["Crispy", "Snack"],
     is_veg: 1,
     in_stock: 1,
     prep_time_mins: 8,
     customizable: {
-      sizes: [{ name: "Regular Bucket", price: 0 }, { name: "Large Share Bucket", price: 60 }],
+      sizes: [
+        { name: "Regular Bucket", price: 0 },
+        { name: "Large Share Bucket", price: 60 }
+      ],
       milk: [],
       sweetness: [],
-      addons: [{ name: "Melted Cheese Sauce", price: 40 }]
+      addons: [
+        { name: "Melted Cheese Sauce", price: 40 },
+        { name: "Extra Garlic Dip", price: 20 }
+      ]
     }
   },
   {
@@ -431,16 +553,21 @@ export const initialMenuItems = [
     category: "snacks",
     price: 210,
     description: "Warm artisan loaf stuffed with melted mozzarella, roasted garlic butter, parsley, and chili flakes.",
-    image: "https://images.unsplash.com/photo-1573140247632-f8fd74997d5c?auto=format&fit=crop&w=800&q=80",
+    image: "/images/garlic-bread.jpg",
     tags: ["Comfort"],
     is_veg: 1,
     in_stock: 1,
     prep_time_mins: 10,
     customizable: {
-      sizes: [{ name: "Standard Loaf", price: 0 }],
+      sizes: [
+        { name: "Standard Loaf", price: 0 }
+      ],
       milk: [],
       sweetness: [],
-      addons: [{ name: "Extra Dip", price: 25 }]
+      addons: [
+        { name: "Extra Cheese Crust", price: 35 },
+        { name: "Herb Butter Dip", price: 25 }
+      ]
     }
   }
 ];

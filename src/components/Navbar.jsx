@@ -49,7 +49,7 @@ export function Navbar({
     { id: 'videos', label: 'Reels' },
     { id: 'about', label: 'Our Story' },
     { id: 'reviews', label: 'Reviews' },
-    { id: 'contact', label: 'Reserve' }
+    { id: 'contact', label: 'Contact' }
   ];
 
   return (
@@ -99,23 +99,6 @@ export function Navbar({
 
         {/* Right Action Controls */}
         <div className="nav-actions">
-          {/* Reserve Table CTA Link */}
-          <button
-            onClick={() => scrollTo('contact')}
-            className="btn btn-primary btn-nav-action"
-            title="Book a table at Cafena"
-            style={{
-              padding: '0.65rem 1.3rem',
-              fontSize: '0.88rem',
-              fontWeight: 700,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-          >
-            <span>Reserve Table</span>
-          </button>
-
           {/* Theme Toggle Button */}
           <button
             onClick={onToggleTheme}
@@ -178,13 +161,6 @@ export function Navbar({
           </div>
 
           <div style={{ marginTop: '0.8rem', paddingTop: '0.8rem', borderTop: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-            <button
-              onClick={() => { setMobileMenuOpen(false); scrollTo('contact'); }}
-              className="btn btn-primary"
-              style={{ width: '100%', padding: '0.75rem', fontSize: '0.9rem', justifyContent: 'center' }}
-            >
-              <span>Reserve a Table</span>
-            </button>
 
             <button
               onClick={() => { onToggleTheme(); setMobileMenuOpen(false); }}

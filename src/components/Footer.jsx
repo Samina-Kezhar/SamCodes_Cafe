@@ -3,7 +3,7 @@ import { MapPin, Phone, Clock, ArrowUp, Lock, MessageCircle } from 'lucide-react
 import { InstagramIcon as Instagram } from './InstagramIcon';
 import { CafenaLogoStamp } from './CafenaDecorations';
 
-export function Footer({ onOpenOwnerAuth }) {
+export function Footer() {
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -193,25 +193,6 @@ export function Footer({ onOpenOwnerAuth }) {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.2rem' }}>
-            {/* Staff / Owner Access Link */}
-            <button
-              onClick={onOpenOwnerAuth}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '5px',
-                color: 'var(--text-dim)',
-                fontSize: '0.78rem',
-                opacity: 0.8
-              }}
-              title="Restricted Café Management Portal"
-            >
-              <Lock size={12} />
-              <span>Owner Portal</span>
-            </button>
-
-            <span>•</span>
-
             <button
               onClick={scrollToTop}
               style={{

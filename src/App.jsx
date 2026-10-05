@@ -155,21 +155,17 @@ export function App() {
   return (
     <div className="app-root">
       {/* =============================================================== */}
-      {/* PART 2: STANDALONE QR CODE ORDERING SYSTEM (TABLE-SPECIFIC)     */}
+      {/* PART 3 (QR ORDERING WEBSITE): STANDALONE CONTACTLESS ORDERING   */}
       {/* =============================================================== */}
       {currentPart === 'part2_qr_ordering' ? (
         <QROrderingView
           table={activeTable}
-          onBackToSite={() => {
-            setCurrentPart('part1_customer');
-            window.location.hash = '';
-          }}
           theme={theme}
           onToggleTheme={toggleTheme}
         />
       ) : currentPart === 'part3_owner' && isOwnerAuthenticated ? (
         /* =============================================================== */
-        /* PART 3: OWNER DASHBOARD (MANAGEMENT PANEL)                     */
+        /* PART 2 (OWNER PANEL): SECURE MANAGEMENT DASHBOARD               */
         /* =============================================================== */
         <OwnerDashboard
           onCloseDashboard={() => {
@@ -182,7 +178,7 @@ export function App() {
         />
       ) : (
         /* =============================================================== */
-        /* PART 1: CUSTOMER EXPERIENCE WEBSITE                            */
+        /* PART 1 (CUSTOMER SITE): PUBLIC BRAND EXPERIENCE WEBSITE         */
         /* =============================================================== */
         <>
           <Navbar
@@ -203,7 +199,7 @@ export function App() {
               }}
             />
 
-            {/* 2. Interactive Menu (Browsing without ordering) */}
+            {/* 2. Interactive Menu Carousel Organized by Dish Types */}
             <CustomerMenuSection menuItems={menuItems} />
 
             {/* 3. Photo Gallery */}
@@ -221,10 +217,8 @@ export function App() {
             {/* 7. Table Reservation & Contact */}
             <ContactSection />
 
-            {/* Footer with discreet Owner Access trigger */}
-            <Footer
-              onOpenOwnerAuth={handleOpenOwnerDashboard}
-            />
+            {/* Footer — completely isolated from owner portal */}
+            <Footer />
           </main>
         </>
       )}

@@ -1,5 +1,16 @@
 import React, { useState } from 'react';
-import { X, Plus, Minus, Check, Sparkles } from 'lucide-react';
+import { X, Plus, Minus, Check, Sparkles, Tag, ArrowRight } from 'lucide-react';
+
+function parseMilk(m) {
+  if (!m) return { name: '', price: 0 };
+  if (typeof m === 'object') {
+    return { name: m.name, price: Number(m.price || 0) };
+  }
+  const match = String(m).match(/\+\s*₹?(\d+)/);
+  const price = match ? parseInt(match[1], 10) : 0;
+  const cleanName = String(m).replace(/\s*\(\+₹?\d+\)/, '').trim();
+  return { name: cleanName, price, raw: m };
+}
 
 export function CustomizationModal({ item, onClose, onAddToCart }) {
   const customizable = item?.customizable || {};
@@ -25,45 +36,64 @@ export function CustomizationModal({ item, onClose, onAddToCart }) {
     }
   };
 
-  // Calculate item unit price with size and addons
-  const basePrice = item.price;
-  const sizeExtra = selectedSize.price || 0;
-  const addonsExtra = selectedAddons.reduce((sum, a) => sum + (a.price || 0), 0);
-  const unitPrice = basePrice + sizeExtra + addonsExtra;
+  // Base price and dynamic extras calculation
+  const basePrice = parseFloat(item.price || 0);
+  const sizeExtra = parseFloat(selectedSize?.price || 0);
+  const milkInfo = parseMilk(selectedMilk);
+  const milkExtra = milkInfo.price;
+  const addonsExtra = selectedAddons.reduce((sum, a) => sum + (parseFloat(a.price) || 0), 0);
+
+  const totalExtraCharges = sizeExtra + milkExtra + addonsExtra;
+  const unitPrice = basePrice + totalExtraCharges;
   const totalPrice = unitPrice * quantity;
 
   const handleAdd = () => {
     const customizations = [];
-    if (selectedMilk) customizations.push(selectedMilk);
-    if (selectedSweetness) customizations.push(selectedSweetness);
+    if (selectedSize && selectedSize.name) {
+      customizations.push(`Size: ${selectedSize.name}${sizeExtra > 0 ? ` (+₹${sizeExtra})` : ''}`);
+    }
+    if (milkInfo.name) {
+      customizations.push(`${milkInfo.name}${milkExtra > 0 ? ` (+₹${milkExtra})` : ''}`);
+    }
+    if (selectedSweetness) {
+      customizations.push(selectedSweetness);
+    }
     selectedAddons.forEach((a) => customizations.push(`${a.name} (+₹${a.price})`));
 
     onAddToCart({
       id: item.id,
       name: item.name,
-      basePrice: item.price,
+      basePrice: basePrice,
+      extraCharges: totalExtraCharges,
       price: unitPrice,
-      size: selectedSize.name,
+      unitPrice: unitPrice,
+      size: selectedSize?.name || 'Regular',
       sizePrice: sizeExtra,
+      milk: milkInfo.name,
+      milkPrice: milkExtra,
       addons: selectedAddons,
+      addonsPrice: addonsExtra,
       customizations,
       kitchenNotes,
       quantity,
-      image: item.image
+      image: item.image,
+      prep_time_mins: item.prep_time_mins || 8
     });
     onClose();
   };
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '540px' }}>
         {/* Modal Header */}
         <div className="modal-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
             <span className="veg-indicator"></span>
             <div>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 700 }}>{item.name}</h3>
-              <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Customize your drink & taste</p>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>{item.name}</h3>
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: 0 }}>
+                Original Dish Price: <strong>₹{basePrice}</strong>
+              </p>
             </div>
           </div>
           <button onClick={onClose} className="btn-icon" aria-label="Close modal">
@@ -72,26 +102,60 @@ export function CustomizationModal({ item, onClose, onAddToCart }) {
         </div>
 
         {/* Modal Body */}
-        <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.3rem' }}>
           {/* Item Preview Image */}
           {item.image && (
-            <div style={{ width: '100%', height: '170px', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
+            <div style={{ width: '100%', height: '180px', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
               <img src={item.image} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>
           )}
 
           {/* Description */}
-          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{item.description}</p>
+          <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>
+            {item.description}
+          </p>
+
+          {/* Live Price Calculator Banner */}
+          <div
+            style={{
+              background: 'var(--bg-surface-elevated)',
+              border: '1.5px solid var(--border-medium)',
+              borderRadius: 'var(--radius-md)',
+              padding: '0.85rem 1.1rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '8px'
+            }}
+          >
+            <div>
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-dim)', display: 'block' }}>Base Price + Customizations</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.86rem' }}>
+                <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>₹{basePrice}</span>
+                {totalExtraCharges > 0 && (
+                  <span style={{ color: 'var(--primary)', fontWeight: 700 }}>+ ₹{totalExtraCharges} extras</span>
+                )}
+                <span>=</span>
+                <strong style={{ color: 'var(--accent-gold)', fontSize: '1rem' }}>₹{unitPrice} / item</strong>
+              </div>
+            </div>
+
+            <div style={{ textAlign: 'right' }}>
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-dim)', display: 'block' }}>Current Total</span>
+              <span style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--primary)' }}>₹{totalPrice}</span>
+            </div>
+          </div>
 
           {/* Size Choice */}
           {sizes.length > 1 && (
             <div>
-              <label style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-main)', display: 'block', marginBottom: '0.6rem' }}>
-                Select Size
+              <label style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-main)', display: 'block', marginBottom: '0.5rem' }}>
+                1. Select Size
               </label>
               <div style={{ display: 'grid', gridTemplateColumns: `repeat(${sizes.length}, 1fr)`, gap: '0.6rem' }}>
                 {sizes.map((s) => {
-                  const isSelected = selectedSize.name === s.name;
+                  const isSelected = selectedSize?.name === s.name;
                   return (
                     <button
                       key={s.name}
@@ -107,13 +171,14 @@ export function CustomizationModal({ item, onClose, onAddToCart }) {
                         flexDirection: 'column',
                         alignItems: 'center',
                         gap: '2px',
+                        cursor: 'pointer',
                         transition: 'all 0.2s'
                       }}
                     >
-                      <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{s.name}</span>
-                      {s.price > 0 && (
-                        <span style={{ fontSize: '0.78rem', color: 'var(--primary)' }}>+₹{s.price}</span>
-                      )}
+                      <span style={{ fontWeight: 600, fontSize: '0.88rem' }}>{s.name}</span>
+                      <span style={{ fontSize: '0.78rem', color: s.price > 0 ? 'var(--primary)' : 'var(--text-dim)', fontWeight: 700 }}>
+                        {s.price > 0 ? `+₹${s.price}` : 'Included'}
+                      </span>
                     </button>
                   );
                 })}
@@ -124,21 +189,27 @@ export function CustomizationModal({ item, onClose, onAddToCart }) {
           {/* Milk Options */}
           {milks.length > 0 && (
             <div>
-              <label style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-main)', display: 'block', marginBottom: '0.6rem' }}>
-                Milk Choice
+              <label style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-main)', display: 'block', marginBottom: '0.5rem' }}>
+                2. Milk Choice
               </label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                {milks.map((milk) => {
-                  const isSelected = selectedMilk === milk;
+                {milks.map((m) => {
+                  const info = parseMilk(m);
+                  const isSelected = (selectedMilk?.name || selectedMilk) === (m?.name || m);
                   return (
                     <button
-                      key={milk}
+                      key={info.name}
                       type="button"
-                      onClick={() => setSelectedMilk(milk)}
+                      onClick={() => setSelectedMilk(m)}
                       className={`filter-pill ${isSelected ? 'active' : ''}`}
-                      style={{ padding: '0.45rem 0.9rem', fontSize: '0.82rem' }}
+                      style={{ padding: '0.5rem 0.95rem', fontSize: '0.82rem', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                     >
-                      {milk}
+                      <span>{info.name}</span>
+                      {info.price > 0 && (
+                        <span style={{ color: isSelected ? '#fff' : 'var(--primary)', fontWeight: 700 }}>
+                          +₹{info.price}
+                        </span>
+                      )}
                     </button>
                   );
                 })}
@@ -149,8 +220,8 @@ export function CustomizationModal({ item, onClose, onAddToCart }) {
           {/* Sweetness Options */}
           {sweetnessOptions.length > 0 && (
             <div>
-              <label style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-main)', display: 'block', marginBottom: '0.6rem' }}>
-                Sweetness Level
+              <label style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-main)', display: 'block', marginBottom: '0.5rem' }}>
+                3. Sweetness Preference
               </label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                 {sweetnessOptions.map((sweet) => {
@@ -174,8 +245,8 @@ export function CustomizationModal({ item, onClose, onAddToCart }) {
           {/* Add-ons List */}
           {addonsList.length > 0 && (
             <div>
-              <label style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-main)', display: 'block', marginBottom: '0.6rem' }}>
-                Extra Add-ons & Toppings
+              <label style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-main)', display: 'block', marginBottom: '0.5rem' }}>
+                4. Extra Add-ons & Flavors (Custom Modifications)
               </label>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {addonsList.map((addon) => {
@@ -185,21 +256,24 @@ export function CustomizationModal({ item, onClose, onAddToCart }) {
                       key={addon.name}
                       onClick={() => toggleAddon(addon)}
                       style={{
-                        padding: '0.65rem 0.9rem',
+                        padding: '0.7rem 0.95rem',
                         borderRadius: 'var(--radius-md)',
                         background: isChecked ? 'rgba(234, 139, 57, 0.12)' : 'var(--bg-surface-elevated)',
-                        border: `1px solid ${isChecked ? 'var(--primary)' : 'var(--border-subtle)'}`,
+                        border: `1.5px solid ${isChecked ? 'var(--primary)' : 'var(--border-subtle)'}`,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        cursor: 'pointer'
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease'
                       }}
                     >
-                      <span style={{ fontSize: '0.88rem', color: isChecked ? '#fff' : 'var(--text-muted)' }}>
-                        {addon.name}
-                      </span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                        <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--primary)' }}>
+                      <div>
+                        <span style={{ fontSize: '0.88rem', fontWeight: isChecked ? 700 : 500, color: isChecked ? 'var(--text-main)' : 'var(--text-muted)' }}>
+                          {addon.name}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                        <span style={{ fontSize: '0.86rem', fontWeight: 800, color: 'var(--primary)' }}>
                           +₹{addon.price}
                         </span>
                         <div
@@ -227,12 +301,12 @@ export function CustomizationModal({ item, onClose, onAddToCart }) {
 
           {/* Kitchen Notes */}
           <div>
-            <label style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-main)', display: 'block', marginBottom: '0.4rem' }}>
+            <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-main)', display: 'block', marginBottom: '0.4rem' }}>
               Special Kitchen Instructions (Optional)
             </label>
             <input
               type="text"
-              placeholder="e.g. extra hot, crisp toast, sauce on side..."
+              placeholder="e.g. Extra hot, less sweet, crisp toast, sauce on side..."
               value={kitchenNotes}
               onChange={(e) => setKitchenNotes(e.target.value)}
               className="search-input"
@@ -242,12 +316,13 @@ export function CustomizationModal({ item, onClose, onAddToCart }) {
         </div>
 
         {/* Modal Footer with Quantity & Add Button */}
-        <div className="modal-footer">
+        <div className="modal-footer" style={{ borderTop: '1px solid var(--border-medium)', paddingTop: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
             <button
               onClick={() => setQuantity(Math.max(1, quantity - 1))}
               className="btn-icon"
-              style={{ width: '36px', height: '36px' }}
+              style={{ width: '38px', height: '38px', background: 'var(--bg-surface-elevated)' }}
+              title="Decrease quantity"
             >
               <Minus size={16} />
             </button>
@@ -257,7 +332,8 @@ export function CustomizationModal({ item, onClose, onAddToCart }) {
             <button
               onClick={() => setQuantity(quantity + 1)}
               className="btn-icon"
-              style={{ width: '36px', height: '36px' }}
+              style={{ width: '38px', height: '38px', background: 'var(--bg-surface-elevated)' }}
+              title="Increase quantity"
             >
               <Plus size={16} />
             </button>
@@ -266,10 +342,10 @@ export function CustomizationModal({ item, onClose, onAddToCart }) {
           <button
             onClick={handleAdd}
             className="btn btn-primary"
-            style={{ padding: '0.75rem 1.6rem', fontSize: '0.98rem' }}
+            style={{ padding: '0.8rem 1.6rem', fontSize: '0.96rem', fontWeight: 700 }}
           >
             <span>Add to Order</span>
-            <span style={{ marginLeft: '4px', fontWeight: 800 }}>• ₹{totalPrice}</span>
+            <span style={{ marginLeft: '6px', fontWeight: 900 }}>• ₹{totalPrice}</span>
           </button>
         </div>
       </div>

@@ -7,6 +7,63 @@ export function OrderTrackingModal({ isOpen, onClose, initialOrder }) {
   const [searchId, setSearchId] = useState(initialOrder ? initialOrder.id : '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [currentTimerTime, setCurrentTimerTime] = useState(Date.now());
+
+  // 1-second interval for real-time countdown
+  useEffect(() => {
+    if (!isOpen || !order || order.status === 'ready' || order.status === 'completed' || order.status === 'cancelled') {
+      return;
+    }
+    const timer = setInterval(() => {
+      setCurrentTimerTime(Date.now());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [isOpen, order]);
+
+  // Compute timing & remaining countdown
+  const orderTiming = React.useMemo(() => {
+    if (!order) return null;
+    const createdAt = new Date(order.created_at || Date.now()).getTime();
+    const prepMins = order.estimated_prep_mins || 10;
+    const targetReadyAt = createdAt + prepMins * 60 * 1000;
+    const now = currentTimerTime;
+    const elapsedMs = Math.max(0, now - createdAt);
+    const remainingMs = Math.max(0, targetReadyAt - now);
+
+    let progressPercent = 0;
+    if (order.status === 'received') {
+      progressPercent = 25;
+    } else if (order.status === 'brewing') {
+      const timeProgress = Math.min(85, 25 + Math.round((elapsedMs / (prepMins * 60 * 1000)) * 60));
+      progressPercent = Math.max(35, timeProgress);
+    } else if (order.status === 'ready') {
+      progressPercent = 95;
+    } else if (order.status === 'completed') {
+      progressPercent = 100;
+    }
+
+    const secsRemaining = Math.floor(remainingMs / 1000);
+    const minsLeft = Math.floor(secsRemaining / 60);
+    const secsLeft = secsRemaining % 60;
+    const formattedRemaining = `${minsLeft}:${secsLeft < 10 ? '0' : ''}${secsLeft}`;
+
+    const formattedTargetTime = new Date(targetReadyAt).toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    return {
+      prepMins,
+      createdAt,
+      targetReadyAt,
+      formattedTargetTime,
+      remainingMs,
+      secsRemaining,
+      formattedRemaining,
+      progressPercent,
+      elapsedMins: Math.round(elapsedMs / 60000)
+    };
+  }, [order, currentTimerTime]);
 
   // Fetch order by ID
   const fetchOrder = async (id) => {
@@ -256,29 +313,96 @@ export function OrderTrackingModal({ isOpen, onClose, initialOrder }) {
                   })}
                 </div>
 
-                {/* Status Message Banner */}
+                {/* Status & Real-time Countdown Banner */}
                 <div
                   style={{
-                    background: currentStep === 2
-                      ? 'rgba(59, 130, 246, 0.15)'
-                      : currentStep === 3
-                      ? 'rgba(16, 185, 129, 0.15)'
-                      : 'var(--primary-subtle)',
-                    border: `1px solid ${currentStep === 2 ? '#3b82f6' : currentStep === 3 ? '#10b981' : 'var(--primary)'}`,
+                    background: 'var(--bg-surface)',
+                    border: `1.5px solid ${currentStep === 2 ? '#3b82f6' : currentStep === 3 ? '#10b981' : 'var(--primary)'}`,
                     borderRadius: 'var(--radius-md)',
-                    padding: '0.85rem 1.2rem',
-                    textAlign: 'center'
+                    padding: '1.2rem',
+                    marginBottom: '1rem'
                   }}
                 >
-                  <p style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-main)', marginBottom: '2px' }}>
-                    {order.status === 'received' && '🟡 Order Received — Barista will begin brewing shortly.'}
-                    {order.status === 'brewing' && '🔥 Brewing in Progress — Grinding fresh beans & preparing food!'}
-                    {order.status === 'ready' && '🎉 Order is Ready! Your items are being served to your table.'}
-                    {order.status === 'completed' && '✨ Completed! Thank you for visiting Cafena Nikol.'}
-                  </p>
-                  <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                    Estimated Prep: ~{order.status === 'ready' || order.status === 'completed' ? 'Done' : '8-10 mins'}
-                  </p>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.8rem', marginBottom: '0.8rem' }}>
+                    <div>
+                      <p style={{ fontWeight: 800, fontSize: '0.98rem', color: 'var(--text-main)', margin: 0 }}>
+                        {order.status === 'received' && '🟡 Order Received — Barista will begin brewing shortly.'}
+                        {order.status === 'brewing' && '🔥 Brewing in Progress — Grinding fresh beans & preparing food!'}
+                        {order.status === 'ready' && '🎉 Order is Ready! Your items are being served to your table.'}
+                        {order.status === 'completed' && '✨ Completed! Thank you for visiting Cafena Nikol.'}
+                      </p>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '3px 0 0 0' }}>
+                        Estimated Prep Time: <strong>~{orderTiming?.prepMins || 10} minutes</strong>
+                        {orderTiming?.formattedTargetTime && order.status !== 'ready' && order.status !== 'completed' && (
+                          <span> • Ready by <strong>{orderTiming.formattedTargetTime}</strong></span>
+                        )}
+                      </p>
+                    </div>
+
+                    {/* Live Countdown Chip */}
+                    {order.status !== 'ready' && order.status !== 'completed' ? (
+                      <div
+                        style={{
+                          background: 'rgba(234, 139, 57, 0.15)',
+                          border: '1.5px solid var(--primary)',
+                          borderRadius: 'var(--radius-full)',
+                          padding: '6px 14px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          fontWeight: 800,
+                          fontSize: '0.92rem',
+                          color: 'var(--primary)'
+                        }}
+                      >
+                        <Clock size={16} />
+                        <span>
+                          {orderTiming?.secsRemaining > 0
+                            ? `⏳ ${orderTiming.formattedRemaining} remaining`
+                            : '⚡ Almost ready now!'}
+                        </span>
+                      </div>
+                    ) : (
+                      <div
+                        style={{
+                          background: 'rgba(16, 185, 129, 0.15)',
+                          border: '1.5px solid #10b981',
+                          borderRadius: 'var(--radius-full)',
+                          padding: '6px 14px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          fontWeight: 800,
+                          fontSize: '0.92rem',
+                          color: '#10b981'
+                        }}
+                      >
+                        <CheckCircle size={16} />
+                        <span>Order Ready!</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Progress bar */}
+                  <div
+                    style={{
+                      height: '6px',
+                      background: 'var(--border-subtle)',
+                      borderRadius: '3px',
+                      overflow: 'hidden'
+                    }}
+                  >
+                    <div
+                      style={{
+                        height: '100%',
+                        width: `${orderTiming?.progressPercent || 25}%`,
+                        background: order.status === 'completed'
+                          ? '#10b981'
+                          : 'linear-gradient(90deg, var(--primary), var(--accent-caramel))',
+                        transition: 'width 0.4s ease'
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
 

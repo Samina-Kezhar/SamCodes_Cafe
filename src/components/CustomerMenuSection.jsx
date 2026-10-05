@@ -1,30 +1,29 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Clock, Sparkles, Info, X, Heart, Coffee, Utensils } from 'lucide-react';
+import { Search, Clock, Sparkles, Info, X, Coffee, Utensils } from 'lucide-react';
 import { CafenaBrushStroke } from './CafenaDecorations';
+import { MenuCategoryCarousel } from './MenuCategoryCarousel';
 
 const CATEGORIES = [
-  { id: 'all', label: 'All Items' },
-  { id: 'signature_frappes', label: 'Signature Frappes', icon: '⭐' },
-  { id: 'hot_coffee', label: 'Hot Specialty Coffee', icon: '☕' },
-  { id: 'cold_brews', label: 'Cold Brews & Iced', icon: '❄️' },
-  { id: 'refreshers', label: 'Artisan Coolers', icon: '🍹' },
-  { id: 'sandwiches', label: 'Gourmet Paninis', icon: '🥪' },
-  { id: 'waffles_desserts', label: 'Waffles & Sweets', icon: '🧇' },
-  { id: 'snacks', label: 'Sides & Munchies', icon: '🍟' }
+  { id: 'all', label: 'All Categories', icon: '✨' },
+  { id: 'signature_frappes', label: 'Signature Frappes', icon: '⭐', desc: 'Velvety blended frappes with espresso, rich cream, and gourmet toppings' },
+  { id: 'hot_coffee', label: 'Hot Specialty Coffee', icon: '☕', desc: 'Single-origin Arabica roasts, silky microfoam, and artisanal latte art' },
+  { id: 'cold_brews', label: 'Cold Brews & Iced', icon: '❄️', desc: '18-hour slow steeped cold brews and refreshing iced coffee creations' },
+  { id: 'refreshers', label: 'Artisan Coolers', icon: '🍹', desc: 'Botanical iced teas, sparkling fruit coolers, and Japanese ceremonial matcha' },
+  { id: 'sandwiches', label: 'Gourmet Paninis', icon: '🥪', desc: 'Toasted artisan sourdough with savory fillings, pesto, and melted cheeses' },
+  { id: 'waffles_desserts', label: 'Waffles & Sweets', icon: '🧇', desc: 'Freshly baked golden Belgian waffles, brownies, and gelato pairings' },
+  { id: 'snacks', label: 'Sides & Munchies', icon: '🍟', desc: 'Crispy seasoned crinkle fries and cheesy pull-apart garlic breads' }
 ];
 
-export function CustomerMenuSection({ menuItems }) {
+export function CustomerMenuSection({ menuItems = [] }) {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [onlyVeg, setOnlyVeg] = useState(false);
   const [sortBy, setSortBy] = useState('default');
   const [viewingDetailItem, setViewingDetailItem] = useState(null);
 
-  const filteredItems = useMemo(() => {
+  // Filter items based on search and veg preferences
+  const processedItems = useMemo(() => {
     return menuItems.filter((item) => {
-      if (selectedCategory !== 'all' && item.category !== selectedCategory) {
-        return false;
-      }
       if (onlyVeg && !item.is_veg) {
         return false;
       }
@@ -43,7 +42,20 @@ export function CustomerMenuSection({ menuItems }) {
       if (sortBy === 'price_desc') return b.price - a.price;
       return 0;
     });
-  }, [menuItems, selectedCategory, searchQuery, onlyVeg, sortBy]);
+  }, [menuItems, searchQuery, onlyVeg, sortBy]);
+
+  // Group items by category for carousels
+  const activeCategories = useMemo(() => {
+    const dishCategories = CATEGORIES.filter((c) => c.id !== 'all');
+    if (selectedCategory !== 'all') {
+      return dishCategories.filter((c) => c.id === selectedCategory);
+    }
+    return dishCategories;
+  }, [selectedCategory]);
+
+  const hasAnyItems = useMemo(() => {
+    return activeCategories.some((cat) => processedItems.some((item) => item.category === cat.id));
+  }, [activeCategories, processedItems]);
 
   return (
     <section id="menu" style={{ padding: '80px 0', position: 'relative' }}>
@@ -67,7 +79,13 @@ export function CustomerMenuSection({ menuItems }) {
             return (
               <button
                 key={cat.id}
-                onClick={() => setSelectedCategory(cat.id)}
+                onClick={() => {
+                  setSelectedCategory(cat.id);
+                  if (cat.id !== 'all') {
+                    const el = document.getElementById(`cat-${cat.id}`);
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }
+                }}
                 className={`filter-pill ${isActive ? 'active' : ''}`}
               >
                 {cat.icon && <span>{cat.icon}</span>}
@@ -129,64 +147,40 @@ export function CustomerMenuSection({ menuItems }) {
           </div>
         </div>
 
-        {/* Menu Items Grid */}
-        {filteredItems.length === 0 ? (
+        {/* Carousel Sliders Organized by Dish Types */}
+        {!hasAnyItems ? (
           <div style={{ textAlign: 'center', padding: '4rem 1rem', color: 'var(--text-muted)' }}>
             <p style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>No menu items found</p>
-            <p style={{ fontSize: '0.9rem' }}>Try searching with a different keyword or category.</p>
+            <p style={{ fontSize: '0.9rem' }}>Try searching with a different keyword or reset filters.</p>
           </div>
         ) : (
-          <div className="menu-grid">
-            {filteredItems.map((item) => (
-              <div
-                key={item.id}
-                className="menu-card"
-                onClick={() => setViewingDetailItem(item)}
-                style={{ cursor: 'pointer' }}
-              >
-                {/* Image Wrap */}
-                <div className="menu-card-img-wrap">
-                  <img src={item.image} alt={item.name} className="menu-card-img" loading="lazy" />
-                  <div className="menu-card-badge-row">
-                    <div style={{ display: 'flex', gap: '6px' }}>
-                      {(item.tags || []).map((tag) => (
-                        <span key={tag} className="badge-tag">{tag}</span>
-                      ))}
-                    </div>
-                    <div className="veg-indicator" title="Pure Vegetarian"></div>
-                  </div>
-                </div>
+          <div className="menu-carousels-container">
+            {activeCategories.map((category) => {
+              const categoryItems = processedItems.filter((item) => item.category === category.id);
+              if (categoryItems.length === 0) return null;
 
-                {/* Card Body */}
-                <div className="menu-card-body">
-                  <div className="menu-card-title-row">
-                    <h3 className="menu-card-title">{item.name}</h3>
-                    <div className="menu-card-price">₹{item.price}</div>
-                  </div>
-
-                  <p className="menu-card-desc">{item.description}</p>
-
-                  <div className="menu-card-footer">
-                    <div className="prep-time">
-                      <Clock size={14} />
-                      <span>{item.prep_time_mins || 8} mins</span>
-                    </div>
-
+              return (
+                <MenuCategoryCarousel
+                  key={category.id}
+                  category={category}
+                  items={categoryItems}
+                  onCardClick={(item) => setViewingDetailItem(item)}
+                  renderCardAction={(item) => (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         setViewingDetailItem(item);
                       }}
                       className="btn btn-secondary"
-                      style={{ padding: '0.45rem 0.95rem', fontSize: '0.82rem' }}
+                      style={{ padding: '0.45rem 0.95rem', fontSize: '0.82rem', gap: '6px' }}
                     >
                       <Info size={14} style={{ color: 'var(--primary)' }} />
                       <span>Flavor Profile</span>
                     </button>
-                  </div>
-                </div>
-              </div>
-            ))}
+                  )}
+                />
+              );
+            })}
           </div>
         )}
       </div>
@@ -214,6 +208,9 @@ export function CustomerMenuSection({ menuItems }) {
                   src={viewingDetailItem.image}
                   alt={viewingDetailItem.name}
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  onError={(e) => {
+                    e.currentTarget.src = '/images/cafena-hero-splash.jpg';
+                  }}
                 />
               </div>
 
@@ -245,14 +242,23 @@ export function CustomerMenuSection({ menuItems }) {
                     Available Barista Customizations (For Dine-in / Takeaway)
                   </span>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                    {(viewingDetailItem.customizable.milk || []).map((m) => (
-                      <span key={m} style={{ fontSize: '0.75rem', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', padding: '3px 8px', borderRadius: '4px' }}>
-                        {m}
+                    {(viewingDetailItem.customizable.sizes || []).map((s) => (
+                      <span key={s.name} style={{ fontSize: '0.75rem', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', padding: '3px 8px', borderRadius: '4px' }}>
+                        {s.name} {s.price > 0 ? `(+₹${s.price})` : ''}
                       </span>
                     ))}
+                    {(viewingDetailItem.customizable.milk || []).map((m) => {
+                      const name = typeof m === 'object' ? m.name : m;
+                      const price = typeof m === 'object' ? m.price : 0;
+                      return (
+                        <span key={name} style={{ fontSize: '0.75rem', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', padding: '3px 8px', borderRadius: '4px' }}>
+                          {name} {price > 0 ? `(+₹${price})` : ''}
+                        </span>
+                      );
+                    })}
                     {(viewingDetailItem.customizable.addons || []).map((a) => (
                       <span key={a.name} style={{ fontSize: '0.75rem', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', padding: '3px 8px', borderRadius: '4px' }}>
-                        + {a.name}
+                        + {a.name} (+₹{a.price})
                       </span>
                     ))}
                   </div>
