@@ -14,7 +14,7 @@ const CATEGORIES = [
   { id: 'snacks', label: 'Sides & Munchies', icon: '🍟', desc: 'Crispy seasoned crinkle fries and cheesy pull-apart garlic breads' }
 ];
 
-export function CustomerMenuSection({ menuItems = [] }) {
+export function CustomerMenuSection({ menuItems = [], onAddToCart }) {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [onlyVeg, setOnlyVeg] = useState(false);
@@ -166,17 +166,31 @@ export function CustomerMenuSection({ menuItems = [] }) {
                   items={categoryItems}
                   onCardClick={(item) => setViewingDetailItem(item)}
                   renderCardAction={(item) => (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setViewingDetailItem(item);
-                      }}
-                      className="btn btn-secondary"
-                      style={{ padding: '0.45rem 0.95rem', fontSize: '0.82rem', gap: '6px' }}
-                    >
-                      <Info size={14} style={{ color: 'var(--primary)' }} />
-                      <span>Flavor Profile</span>
-                    </button>
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setViewingDetailItem(item);
+                        }}
+                        className="btn btn-secondary"
+                        style={{ padding: '0.45rem 0.8rem', fontSize: '0.8rem', gap: '5px' }}
+                      >
+                        <Info size={13} style={{ color: 'var(--primary)' }} />
+                        <span>Profile</span>
+                      </button>
+                      {onAddToCart && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onAddToCart(item);
+                          }}
+                          className="btn btn-primary"
+                          style={{ padding: '0.45rem 0.85rem', fontSize: '0.8rem', gap: '4px' }}
+                        >
+                          <span>+ Order</span>
+                        </button>
+                      )}
+                    </div>
                   )}
                 />
               );
@@ -266,7 +280,7 @@ export function CustomerMenuSection({ menuItems = [] }) {
               )}
             </div>
 
-            <div className="modal-footer" style={{ justifyContent: 'flex-end' }}>
+            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <button
                 onClick={() => setViewingDetailItem(null)}
                 className="btn btn-secondary"
@@ -274,6 +288,18 @@ export function CustomerMenuSection({ menuItems = [] }) {
               >
                 Close
               </button>
+              {onAddToCart && (
+                <button
+                  onClick={() => {
+                    onAddToCart(viewingDetailItem);
+                    setViewingDetailItem(null);
+                  }}
+                  className="btn btn-primary"
+                  style={{ padding: '0.5rem 1.4rem', fontSize: '0.88rem' }}
+                >
+                  Add to Order • ₹{viewingDetailItem.price}
+                </button>
+              )}
             </div>
           </div>
         </div>

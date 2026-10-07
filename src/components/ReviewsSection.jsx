@@ -4,7 +4,7 @@ import { CafenaBrushStroke } from './CafenaDecorations';
 
 export function ReviewsSection() {
   const [reviews, setReviews] = useState([]);
-  const [stats, setStats] = useState({ avgRating: '4.8', totalCount: 1420, distribution: { 5: 1210, 4: 170, 3: 30, 2: 7, 1: 3 } });
+  const [stats, setStats] = useState({ avgRating: '4.8', totalCount: 7, distribution: { 5: 5, 4: 2, 3: 0, 2: 0, 1: 0 } });
   const [selectedRatingFilter, setSelectedRatingFilter] = useState('all');
   const [loading, setLoading] = useState(true);
 
@@ -30,12 +30,11 @@ export function ReviewsSection() {
       if (data.success) {
         setReviews(data.reviews);
         if (data.stats) {
-          setStats((prev) => ({
-            ...prev,
+          setStats({
             avgRating: data.stats.avgRating || '4.8',
-            totalCount: Math.max(1400, (data.stats.totalCount || 0) + 1400),
-            distribution: data.stats.distribution || prev.distribution
-          }));
+            totalCount: data.stats.totalCount || 0,
+            distribution: data.stats.distribution || { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }
+          });
         }
       }
     } catch (err) {

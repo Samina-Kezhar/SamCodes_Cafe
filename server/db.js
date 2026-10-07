@@ -146,6 +146,25 @@ export function initDatabase() {
     // Column already exists
   }
 
+  // Ensure tracking_token column exists in orders for IDOR protection
+  try {
+    db.prepare('ALTER TABLE orders ADD COLUMN tracking_token TEXT').run();
+  } catch {
+    // Column already exists
+  }
+
+  // Ensure unique index on offer codes and performance indices
+  try {
+    db.exec(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_offers_code ON offers(code);
+      CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
+      CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at);
+      CREATE INDEX IF NOT EXISTS idx_menu_category ON menu_items(category);
+    `);
+  } catch (err) {
+    console.error('Index creation error:', err);
+  }
+
   // Migrate any legacy review or order records from Coffee Stand to Cafena
   try {
     db.prepare(`UPDATE reviews SET favorite_item = REPLACE(favorite_item, 'Coffee Stand', 'Cafena')`).run();

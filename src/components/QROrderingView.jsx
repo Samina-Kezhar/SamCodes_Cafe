@@ -41,10 +41,10 @@ export function QROrderingView({
   const [searchQuery, setSearchQuery] = useState('');
   const [onlyVeg, setOnlyVeg] = useState(false);
 
-  // Cart state
+  // Cart state (Unified across customer website & QR ordering) (U02)
   const [cartItems, setCartItems] = useState(() => {
     try {
-      const saved = localStorage.getItem('coffeestand_qr_cart');
+      const saved = localStorage.getItem('coffeestand_cart') || localStorage.getItem('coffeestand_qr_cart');
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -127,6 +127,7 @@ export function QROrderingView({
   // Persist cart
   useEffect(() => {
     try {
+      localStorage.setItem('coffeestand_cart', JSON.stringify(cartItems));
       localStorage.setItem('coffeestand_qr_cart', JSON.stringify(cartItems));
     } catch {
       // ignore
@@ -140,6 +141,7 @@ export function QROrderingView({
         localStorage.setItem('coffeestand_active_order', JSON.stringify(activePlacedOrder));
       } else {
         localStorage.removeItem('coffeestand_active_order');
+        localStorage.removeItem('coffeestand_active_order_token');
       }
     } catch {
       // ignore
@@ -164,9 +166,13 @@ export function QROrderingView({
     };
     fetchCatalog();
 
-    // Re-verify active order from server if exists
+    // Re-verify active order from server if exists with IDOR token (S08)
     if (activePlacedOrder?.id) {
-      fetch(`/api/orders/${encodeURIComponent(activePlacedOrder.id)}`)
+      const token = activePlacedOrder.tracking_token || localStorage.getItem('coffeestand_active_order_token') || '';
+      const url = token
+        ? `/api/orders/${encodeURIComponent(activePlacedOrder.id)}?token=${encodeURIComponent(token)}`
+        : `/api/orders/${encodeURIComponent(activePlacedOrder.id)}`;
+      fetch(url)
         .then((r) => r.json())
         .then((data) => {
           if (data.success && data.order) {
@@ -370,7 +376,10 @@ export function QROrderingView({
       }
 
       // Success! Clear cart, store order and trigger real-time order tracking
-      setActivePlacedOrder(data.order);
+      if (data.tracking_token) {
+        localStorage.setItem('coffeestand_active_order_token', data.tracking_token);
+      }
+      setActivePlacedOrder({ ...data.order, tracking_token: data.tracking_token });
       setCartItems([]);
       setIsCartOpen(false);
       setShowOnlinePaymentModal(false);
@@ -383,7 +392,7 @@ export function QROrderingView({
     }
   };
 
-  // Real-time Timing & Countdown Calculations for Order Tracking
+  // Real-time Timing & Countdown Calculations for Order Tracking (U06)
   const trackingTiming = useMemo(() => {
     if (!activePlacedOrder) return null;
 
@@ -392,13 +401,13 @@ export function QROrderingView({
     const targetReadyMs = createdAtMs + estimatedMins * 60 * 1000;
     const elapsedMs = Math.max(0, currentTimerTime - createdAtMs);
     const remainingMs = Math.max(0, targetReadyMs - currentTimerTime);
-    const remainingSecs = Math.floor(remainingMs / 1000);
+    const remainingSecs = Math.max(0, Math.floor(remainingMs / 1000));
     const minsRemaining = Math.floor(remainingSecs / 60);
     const secsRemaining = remainingSecs % 60;
 
-    const formattedRemaining = `${minsRemaining}:${secsRemaining < 10 ? '0' : ''}${secsRemaining}`;
-    const totalPrepMs = estimatedMins * 60 * 1000;
-    const progressPercent = Math.min(100, Math.max(5, Math.round((elapsedMs / totalPrepMs) * 100)));
+    const formattedRemaining = remainingSecs === 0 ? '0:00' : `${minsRemaining}:${secsRemaining < 10 ? '0' : ''}${secsRemaining}`;
+    const totalPrepMs = Math.max(1, estimatedMins * 60 * 1000);
+    const progressPercent = Math.min(95, Math.max(5, Math.round((elapsedMs / totalPrepMs) * 100)));
 
     const readyTargetDate = new Date(targetReadyMs);
     const readyTimeStr = readyTargetDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -410,6 +419,7 @@ export function QROrderingView({
       secsRemaining,
       formattedRemaining,
       progressPercent,
+      isFinishingUp: remainingSecs === 0 && (activePlacedOrder.status === 'received' || activePlacedOrder.status === 'brewing'),
       elapsedMins: Math.round(elapsedMs / 60000)
     };
   }, [activePlacedOrder, currentTimerTime]);

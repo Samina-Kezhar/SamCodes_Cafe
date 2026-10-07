@@ -66,10 +66,27 @@ export function OwnerDashboard({ onCloseDashboard, onLogout, theme = 'modern-lat
   const [selectedRestockItem, setSelectedRestockItem] = useState(null);
   const [restockAmount, setRestockAmount] = useState(5);
 
+  const getAuthToken = () => {
+    return localStorage.getItem('coffeestand_auth_token') || sessionStorage.getItem('coffeestand_auth_token') || '';
+  };
+
+  const authFetch = async (url, options = {}) => {
+    const token = getAuthToken();
+    const headers = {
+      ...(options.headers || {}),
+      'Authorization': `Bearer ${token}`
+    };
+    const res = await fetch(url, { ...options, headers });
+    if (res.status === 401 && onLogout) {
+      onLogout();
+    }
+    return res;
+  };
+
   // Safe fetch helper to ensure intermittent errors never break dashboard state
   const safeFetchJson = async (url) => {
     try {
-      const res = await fetch(url);
+      const res = await authFetch(url);
       if (!res.ok) return { success: false };
       return await res.json();
     } catch (err) {
@@ -122,7 +139,7 @@ export function OwnerDashboard({ onCloseDashboard, onLogout, theme = 'modern-lat
         ws.onopen = () => {
           setWsConnected(true);
           try {
-            ws.send(JSON.stringify({ type: 'IDENTIFY', role: 'owner' }));
+            ws.send(JSON.stringify({ type: 'IDENTIFY', role: 'owner', token: getAuthToken() }));
           } catch {
             // ignore
           }
@@ -189,7 +206,7 @@ export function OwnerDashboard({ onCloseDashboard, onLogout, theme = 'modern-lat
   // Update order status
   const handleUpdateStatus = async (orderId, newStatus) => {
     try {
-      const res = await fetch(`/api/orders/${orderId}/status`, {
+      const res = await authFetch(`/api/orders/${orderId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus })
@@ -197,7 +214,7 @@ export function OwnerDashboard({ onCloseDashboard, onLogout, theme = 'modern-lat
       const data = await res.json();
       if (data.success) {
         setOrders((prev) => prev.map((o) => (o.id === orderId ? data.order : o)));
-        const statsRes = await fetch('/api/dashboard/stats');
+        const statsRes = await authFetch('/api/dashboard/stats');
         const statsData = await statsRes.json();
         if (statsData.success) setStats(statsData.stats);
       }
@@ -209,7 +226,7 @@ export function OwnerDashboard({ onCloseDashboard, onLogout, theme = 'modern-lat
   // Toggle menu item stock
   const handleToggleStock = async (itemId) => {
     try {
-      const res = await fetch(`/api/menu/${itemId}/toggle`, { method: 'PATCH' });
+      const res = await authFetch(`/api/menu/${itemId}/toggle`, { method: 'PATCH' });
       const data = await res.json();
       if (data.success) {
         setMenuItems((prev) =>
@@ -225,7 +242,7 @@ export function OwnerDashboard({ onCloseDashboard, onLogout, theme = 'modern-lat
   const handleCreateMenuItem = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/menu', {
+      const res = await authFetch('/api/menu', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newItem)
@@ -255,7 +272,7 @@ export function OwnerDashboard({ onCloseDashboard, onLogout, theme = 'modern-lat
     e.preventDefault();
     if (!editingItem) return;
     try {
-      const res = await fetch(`/api/menu/${editingItem.id}`, {
+      const res = await authFetch(`/api/menu/${editingItem.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editingItem)
@@ -275,7 +292,7 @@ export function OwnerDashboard({ onCloseDashboard, onLogout, theme = 'modern-lat
   const handleDeleteMenuItem = async (id) => {
     if (!window.confirm('Are you sure you want to remove this item from the café menu?')) return;
     try {
-      const res = await fetch(`/api/menu/${id}`, { method: 'DELETE' });
+      const res = await authFetch(`/api/menu/${id}`, { method: 'DELETE' });
       const data = await res.json();
       if (data.success) {
         setMenuItems((prev) => prev.filter((m) => m.id !== id));
@@ -289,7 +306,7 @@ export function OwnerDashboard({ onCloseDashboard, onLogout, theme = 'modern-lat
   const handleRestockInventory = async () => {
     if (!selectedRestockItem) return;
     try {
-      const res = await fetch(`/api/inventory/${selectedRestockItem.id}/restock`, {
+      const res = await authFetch(`/api/inventory/${selectedRestockItem.id}/restock`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ add_amount: parseFloat(restockAmount) })
@@ -299,7 +316,7 @@ export function OwnerDashboard({ onCloseDashboard, onLogout, theme = 'modern-lat
         setInventory((prev) => prev.map((i) => (i.id === selectedRestockItem.id ? data.item : i)));
         setSelectedRestockItem(null);
         // Refresh stats
-        const statsRes = await fetch('/api/dashboard/stats');
+        const statsRes = await authFetch('/api/dashboard/stats');
         const statsData = await statsRes.json();
         if (statsData.success) setStats(statsData.stats);
       }
@@ -312,7 +329,7 @@ export function OwnerDashboard({ onCloseDashboard, onLogout, theme = 'modern-lat
   const handleCreateOffer = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/offers', {
+      const res = await authFetch('/api/offers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newOffer)
@@ -340,7 +357,7 @@ export function OwnerDashboard({ onCloseDashboard, onLogout, theme = 'modern-lat
   // Delete offer
   const handleDeleteOffer = async (id) => {
     try {
-      const res = await fetch(`/api/offers/${id}`, { method: 'DELETE' });
+      const res = await authFetch(`/api/offers/${id}`, { method: 'DELETE' });
       const data = await res.json();
       if (data.success) {
         setOffers((prev) => prev.filter((o) => o.id !== id));
@@ -353,7 +370,7 @@ export function OwnerDashboard({ onCloseDashboard, onLogout, theme = 'modern-lat
   // Update reservation status
   const handleUpdateReservationStatus = async (id, status) => {
     try {
-      const res = await fetch(`/api/contact/${id}/status`, {
+      const res = await authFetch(`/api/contact/${id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })

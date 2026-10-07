@@ -4,16 +4,34 @@ import { X, Plus, Minus, Check, Sparkles, Tag, ArrowRight } from 'lucide-react';
 function parseMilk(m) {
   if (!m) return { name: '', price: 0 };
   if (typeof m === 'object') {
-    return { name: m.name, price: Number(m.price || 0) };
+    const rawName = String(m.name || '');
+    const cleanName = rawName.replace(/\s*\(\+₹?\d+\)/, '').trim();
+    let price = Number(m.price);
+    if (isNaN(price)) {
+      const match = rawName.match(/\+\s*₹?(\d+)/);
+      price = match ? parseInt(match[1], 10) : 0;
+    }
+    return { name: cleanName, price: price || 0, raw: m };
   }
   const match = String(m).match(/\+\s*₹?(\d+)/);
   const price = match ? parseInt(match[1], 10) : 0;
   const cleanName = String(m).replace(/\s*\(\+₹?\d+\)/, '').trim();
-  return { name: cleanName, price, raw: m };
+  return { name: cleanName, price: price || 0, raw: m };
 }
 
 export function CustomizationModal({ item, onClose, onAddToCart }) {
-  const customizable = item?.customizable || {};
+  const customizable = React.useMemo(() => {
+    if (!item?.customizable) return {};
+    if (typeof item.customizable === 'string') {
+      try {
+        return JSON.parse(item.customizable);
+      } catch {
+        return {};
+      }
+    }
+    return item.customizable;
+  }, [item?.customizable]);
+
   const sizes = customizable.sizes || [{ name: 'Standard', price: 0 }];
   const milks = customizable.milk || [];
   const sweetnessOptions = customizable.sweetness || [];
@@ -29,10 +47,12 @@ export function CustomizationModal({ item, onClose, onAddToCart }) {
   if (!item) return null;
 
   const toggleAddon = (addon) => {
-    if (selectedAddons.some((a) => a.name === addon.name)) {
-      setSelectedAddons(selectedAddons.filter((a) => a.name !== addon.name));
+    const cleanName = String(addon.name || '').replace(/\s*\(\+₹?\d+\)/, '').trim();
+    const cleanPrice = Number(addon.price) || 0;
+    if (selectedAddons.some((a) => a.name === cleanName)) {
+      setSelectedAddons(selectedAddons.filter((a) => a.name !== cleanName));
     } else {
-      setSelectedAddons([...selectedAddons, addon]);
+      setSelectedAddons([...selectedAddons, { name: cleanName, price: cleanPrice }]);
     }
   };
 
@@ -250,10 +270,12 @@ export function CustomizationModal({ item, onClose, onAddToCart }) {
               </label>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {addonsList.map((addon) => {
-                  const isChecked = selectedAddons.some((a) => a.name === addon.name);
+                  const cleanName = String(addon.name || '').replace(/\s*\(\+₹?\d+\)/, '').trim();
+                  const cleanPrice = Number(addon.price) || 0;
+                  const isChecked = selectedAddons.some((a) => a.name === cleanName);
                   return (
                     <div
-                      key={addon.name}
+                      key={cleanName}
                       onClick={() => toggleAddon(addon)}
                       style={{
                         padding: '0.7rem 0.95rem',
@@ -269,12 +291,12 @@ export function CustomizationModal({ item, onClose, onAddToCart }) {
                     >
                       <div>
                         <span style={{ fontSize: '0.88rem', fontWeight: isChecked ? 700 : 500, color: isChecked ? 'var(--text-main)' : 'var(--text-muted)' }}>
-                          {addon.name}
+                          {cleanName}
                         </span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
                         <span style={{ fontSize: '0.86rem', fontWeight: 800, color: 'var(--primary)' }}>
-                          +₹{addon.price}
+                          +₹{cleanPrice}
                         </span>
                         <div
                           style={{

@@ -1,23 +1,38 @@
 import React, { useState, useEffect } from 'react';
 import {
   Menu as MenuIcon, X, Sparkles, Utensils, Image,
-  Film, Info, PhoneCall, Sun, Moon, Star
+  Film, Info, PhoneCall, Sun, Moon, Star, ShoppingBag, QrCode
 } from 'lucide-react';
 import { CafenaLogoStamp } from './CafenaDecorations';
 
 export function Navbar({
   theme = 'warm-cream',
-  onToggleTheme
+  onToggleTheme,
+  onOpenCart,
+  cartCount = 0,
+  onOpenQR
 }) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('hero');
 
+  // Prevent background body scrolling when mobile menu is open (U08)
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [mobileMenuOpen]);
+
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 30);
 
-      const sections = ['hero', 'menu', 'gallery', 'videos', 'about', 'reviews', 'contact'];
+      const sections = ['hero', 'menu', 'offers', 'gallery', 'videos', 'about', 'reviews', 'contact'];
       const scrollPos = window.scrollY + 130;
       for (const sectionId of sections) {
         const el = document.getElementById(sectionId);
@@ -45,6 +60,7 @@ export function Navbar({
   const navLinks = [
     { id: 'hero', label: 'Home' },
     { id: 'menu', label: 'Menu' },
+    { id: 'offers', label: 'Offers' },
     { id: 'gallery', label: 'Gallery' },
     { id: 'videos', label: 'Reels' },
     { id: 'about', label: 'Our Story' },
@@ -99,12 +115,75 @@ export function Navbar({
 
         {/* Right Action Controls */}
         <div className="nav-actions">
+          {/* Table QR Standee button */}
+          {onOpenQR && (
+            <button
+              onClick={onOpenQR}
+              className="btn-icon"
+              aria-label="Table QR Standee"
+              title="View Table QR Standee"
+              style={{
+                width: '44px',
+                height: '44px',
+                background: 'var(--bg-surface-elevated)',
+                borderColor: 'var(--border-medium)',
+                color: 'var(--text-main)',
+                borderRadius: '50%',
+                cursor: 'pointer'
+              }}
+            >
+              <QrCode size={19} style={{ color: 'var(--primary)' }} />
+            </button>
+          )}
+
+          {/* Cart Drawer Trigger button (U01) */}
+          {onOpenCart && (
+            <button
+              onClick={onOpenCart}
+              className="btn-icon"
+              aria-label="View Order Cart"
+              title="View Order Cart"
+              style={{
+                width: '44px',
+                height: '44px',
+                background: 'var(--bg-surface-elevated)',
+                borderColor: 'var(--border-medium)',
+                color: 'var(--text-main)',
+                borderRadius: '50%',
+                cursor: 'pointer',
+                position: 'relative'
+              }}
+            >
+              <ShoppingBag size={19} style={{ color: 'var(--primary)' }} />
+              {cartCount > 0 && (
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: '-4px',
+                    right: '-4px',
+                    background: 'var(--primary)',
+                    color: '#fff',
+                    fontSize: '0.68rem',
+                    fontWeight: 800,
+                    borderRadius: '10px',
+                    padding: '2px 5px',
+                    minWidth: '18px',
+                    textAlign: 'center',
+                    lineHeight: 1
+                  }}
+                >
+                  {cartCount}
+                </span>
+              )}
+            </button>
+          )}
+
           {/* Theme Toggle Button */}
           <button
             onClick={onToggleTheme}
             className="btn-icon theme-toggle-btn"
-            aria-label={theme === 'modern-latte' || theme === 'warm-cream' ? 'Switch to Midnight Dark Theme' : 'Switch to Clean Light Theme'}
-            title={theme === 'modern-latte' || theme === 'warm-cream' ? 'Switch to Midnight Dark Theme' : 'Switch to Clean Light Theme'}
+            aria-label={theme === 'midnight-roast' ? 'Switch to Clean Day Theme' : 'Switch to Midnight Dark Theme'}
+            title={theme === 'midnight-roast' ? 'Switch to Clean Day Theme' : 'Switch to Midnight Dark Theme'}
             style={{
               width: '44px',
               height: '44px',
@@ -114,10 +193,10 @@ export function Navbar({
               transition: 'all 0.25s ease'
             }}
           >
-            {theme === 'modern-latte' || theme === 'warm-cream' ? (
-              <Moon size={19} style={{ color: 'var(--primary)' }} />
-            ) : (
+            {theme === 'midnight-roast' ? (
               <Sun size={19} style={{ color: 'var(--accent-gold)' }} />
+            ) : (
+              <Moon size={19} style={{ color: 'var(--primary)' }} />
             )}
           </button>
 
@@ -143,7 +222,7 @@ export function Navbar({
         </div>
       </div>
 
-      {/* Mobile Drawer Menu */}
+      {/* Mobile Drawer Menu (U08) */}
       {mobileMenuOpen && (
         <div className="mobile-nav-drawer">
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -161,14 +240,24 @@ export function Navbar({
           </div>
 
           <div style={{ marginTop: '0.8rem', paddingTop: '0.8rem', borderTop: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+            {onOpenCart && (
+              <button
+                onClick={() => { onOpenCart(); setMobileMenuOpen(false); }}
+                className="btn btn-primary"
+                style={{ width: '100%', padding: '0.65rem', fontSize: '0.85rem', justifyContent: 'center', gap: '0.5rem' }}
+              >
+                <ShoppingBag size={16} />
+                <span>View Order Cart ({cartCount})</span>
+              </button>
+            )}
 
             <button
               onClick={() => { onToggleTheme(); setMobileMenuOpen(false); }}
               className="btn btn-secondary"
               style={{ width: '100%', padding: '0.65rem', fontSize: '0.85rem', justifyContent: 'center', gap: '0.5rem' }}
             >
-              {theme === 'modern-latte' || theme === 'warm-cream' ? <Moon size={16} style={{ color: 'var(--primary)' }} /> : <Sun size={16} style={{ color: 'var(--accent-gold)' }} />}
-              <span>{theme === 'modern-latte' || theme === 'warm-cream' ? 'Switch to Midnight Dark Theme' : 'Switch to Clean Light Theme'}</span>
+              {theme === 'midnight-roast' ? <Sun size={16} style={{ color: 'var(--accent-gold)' }} /> : <Moon size={16} style={{ color: 'var(--primary)' }} />}
+              <span>{theme === 'midnight-roast' ? 'Switch to Light Theme' : 'Switch to Dark Theme'}</span>
             </button>
           </div>
         </div>

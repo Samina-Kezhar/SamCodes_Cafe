@@ -9,6 +9,26 @@ export function OrderTrackingModal({ isOpen, onClose, initialOrder }) {
   const [error, setError] = useState('');
   const [currentTimerTime, setCurrentTimerTime] = useState(Date.now());
 
+  // Sync with initialOrder or localStorage when modal opens
+  useEffect(() => {
+    if (!isOpen) return;
+    if (initialOrder) {
+      setOrder(initialOrder);
+      setSearchId(initialOrder.id);
+    } else {
+      const stored = localStorage.getItem('coffeestand_active_order');
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          setOrder(parsed);
+          setSearchId(parsed.id);
+        } catch {
+          // ignore
+        }
+      }
+    }
+  }, [initialOrder, isOpen]);
+
   // 1-second interval for real-time countdown
   useEffect(() => {
     if (!isOpen || !order || order.status === 'ready' || order.status === 'completed' || order.status === 'cancelled') {
@@ -34,7 +54,7 @@ export function OrderTrackingModal({ isOpen, onClose, initialOrder }) {
     if (order.status === 'received') {
       progressPercent = 25;
     } else if (order.status === 'brewing') {
-      const timeProgress = Math.min(85, 25 + Math.round((elapsedMs / (prepMins * 60 * 1000)) * 60));
+      const timeProgress = Math.min(95, 25 + Math.round((elapsedMs / (prepMins * 60 * 1000)) * 70));
       progressPercent = Math.max(35, timeProgress);
     } else if (order.status === 'ready') {
       progressPercent = 95;
@@ -42,10 +62,10 @@ export function OrderTrackingModal({ isOpen, onClose, initialOrder }) {
       progressPercent = 100;
     }
 
-    const secsRemaining = Math.floor(remainingMs / 1000);
+    const secsRemaining = Math.max(0, Math.floor(remainingMs / 1000));
     const minsLeft = Math.floor(secsRemaining / 60);
     const secsLeft = secsRemaining % 60;
-    const formattedRemaining = `${minsLeft}:${secsLeft < 10 ? '0' : ''}${secsLeft}`;
+    const formattedRemaining = secsRemaining === 0 ? '0:00' : `${minsLeft}:${secsLeft < 10 ? '0' : ''}${secsLeft}`;
 
     const formattedTargetTime = new Date(targetReadyAt).toLocaleTimeString([], {
       hour: '2-digit',
@@ -61,22 +81,27 @@ export function OrderTrackingModal({ isOpen, onClose, initialOrder }) {
       secsRemaining,
       formattedRemaining,
       progressPercent,
+      isFinishingUp: secsRemaining === 0 && (order.status === 'received' || order.status === 'brewing'),
       elapsedMins: Math.round(elapsedMs / 60000)
     };
   }, [order, currentTimerTime]);
 
-  // Fetch order by ID
+  // Fetch order by ID with IDOR tracking token support (S08)
   const fetchOrder = async (id) => {
     if (!id || !id.trim()) return;
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`/api/orders/${encodeURIComponent(id.trim())}`);
+      const token = order?.tracking_token || localStorage.getItem('coffeestand_active_order_token') || '';
+      const url = token
+        ? `/api/orders/${encodeURIComponent(id.trim())}?token=${encodeURIComponent(token)}`
+        : `/api/orders/${encodeURIComponent(id.trim())}`;
+      const res = await fetch(url);
       const data = await res.json();
       if (data.success && data.order) {
         setOrder(data.order);
       } else {
-        setError('Order not found. Please check your Order ID.');
+        setError(data.error || 'Order not found. Please check your Order ID.');
       }
     } catch {
       setError('Failed to track order. Please try again.');

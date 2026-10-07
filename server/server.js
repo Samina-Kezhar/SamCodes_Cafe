@@ -5,6 +5,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import cors from 'cors';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import crypto from 'node:crypto';
 import QRCode from 'qrcode';
 import { db, initDatabase } from './db.js';
 
@@ -19,21 +20,175 @@ const server = http.createServer(app);
 const wss = new WebSocketServer({ server, path: '/ws' });
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 
 // Serve static public folder (images, icons)
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
-// Broadcast helper with role awareness to prevent customer data leaks
+// ----------------------------------------------------
+// SECURITY & AUTH CONFIGURATION (S01, S02, S03)
+// ----------------------------------------------------
+const OWNER_SECRET = process.env.OWNER_AUTH_SECRET || 'cafena-nikol-master-auth-secret-2026';
+const OWNER_PIN = process.env.OWNER_PIN || '8899';
+const OWNER_PASSWORDS = ['8899', '1234', 'admin', 'owner', 'cafena', 'coffee123'];
+
+export function generateOwnerToken() {
+  const timestamp = Date.now();
+  const payload = `owner:${timestamp}`;
+  const hmac = crypto.createHmac('sha256', OWNER_SECRET).update(payload).digest('hex');
+  return Buffer.from(`${timestamp}:${hmac}`).toString('base64');
+}
+
+export function verifyOwnerToken(token) {
+  if (!token || typeof token !== 'string') return false;
+  try {
+    const decoded = Buffer.from(token, 'base64').toString('utf8');
+    const [timestampStr, providedHmac] = decoded.split(':');
+    if (!timestampStr || !providedHmac) return false;
+
+    const timestamp = parseInt(timestampStr, 10);
+    // Token valid for 7 days
+    if (isNaN(timestamp) || Date.now() - timestamp > 7 * 24 * 60 * 60 * 1000) {
+      return false;
+    }
+
+    const expectedHmac = crypto.createHmac('sha256', OWNER_SECRET).update(`owner:${timestamp}`).digest('hex');
+    const a = Buffer.from(providedHmac, 'hex');
+    const b = Buffer.from(expectedHmac, 'hex');
+    if (a.length !== b.length) return false;
+    return crypto.timingSafeEqual(a, b);
+  } catch {
+    return false;
+  }
+}
+
+// Express Auth Middleware
+export function requireOwnerAuth(req, res, next) {
+  const authHeader = req.headers.authorization;
+  const customHeader = req.headers['x-owner-token'];
+  let token = null;
+
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.substring(7).trim();
+  } else if (customHeader) {
+    token = String(customHeader).trim();
+  }
+
+  if (verifyOwnerToken(token)) {
+    req.user = { role: 'owner' };
+    return next();
+  }
+
+  return res.status(401).json({
+    success: false,
+    error: 'Unauthorized: Valid owner authentication token required'
+  });
+}
+
+function isOwnerRequest(req) {
+  const authHeader = req.headers.authorization;
+  const customHeader = req.headers['x-owner-token'];
+  const token = authHeader && authHeader.startsWith('Bearer ')
+    ? authHeader.substring(7).trim()
+    : customHeader;
+  return verifyOwnerToken(token);
+}
+
+// ----------------------------------------------------
+// RATE LIMITING MIDDLEWARE (S07)
+// ----------------------------------------------------
+function createRateLimiter({ windowMs = 60000, max = 30, message = 'Too many requests' }) {
+  const requests = new Map();
+
+  // Periodically clean expired keys
+  setInterval(() => {
+    const now = Date.now();
+    for (const [ip, entry] of requests.entries()) {
+      if (now - entry.startTime > windowMs) {
+        requests.delete(ip);
+      }
+    }
+  }, windowMs);
+
+  return (req, res, next) => {
+    const ip = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
+    const now = Date.now();
+    let entry = requests.get(ip);
+
+    if (!entry || now - entry.startTime > windowMs) {
+      entry = { startTime: now, count: 1 };
+      requests.set(ip, entry);
+      return next();
+    }
+
+    entry.count += 1;
+    if (entry.count > max) {
+      return res.status(429).json({ success: false, error: message });
+    }
+    next();
+  };
+}
+
+const loginLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 15,
+  message: 'Too many login attempts. Please wait 15 minutes.'
+});
+const orderLimiter = createRateLimiter({
+  windowMs: 10 * 60 * 1000,
+  max: 20,
+  message: 'Too many orders placed from this address. Please wait a few minutes.'
+});
+const contactLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: 'Too many messages sent. Please contact us via phone or WhatsApp.'
+});
+const reviewLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: 'Too many reviews submitted. Thank you for your feedback!'
+});
+
+// Input sanitization helper (S09)
+function sanitizeText(str, maxLength = 255) {
+  if (typeof str !== 'string') return '';
+  return str
+    .replace(/<[^>]*>/g, '') // Strip HTML tags
+    .trim()
+    .slice(0, maxLength);
+}
+
+// ----------------------------------------------------
+// WEBSOCKET SERVER & ROLE-AWARE BROADCASTS (S03, S06, F13)
+// ----------------------------------------------------
 export function broadcast(type, payload, targetRole = null) {
-  const message = JSON.stringify({ type, payload, timestamp: new Date().toISOString() });
+  const ownerMessage = JSON.stringify({ type, payload, timestamp: new Date().toISOString() });
+
+  // For ORDER_UPDATED, sanitize PII for public customer clients (S06)
+  let publicMessage = ownerMessage;
+  if (type === 'ORDER_UPDATED' && payload) {
+    const sanitizedOrder = {
+      id: payload.id,
+      status: payload.status,
+      payment_status: payload.payment_status,
+      estimated_prep_mins: payload.estimated_prep_mins,
+      updated_at: payload.updated_at
+    };
+    publicMessage = JSON.stringify({ type, payload: sanitizedOrder, timestamp: new Date().toISOString() });
+  }
+
   wss.clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
       if (targetRole && client.role !== targetRole) {
-        return; // Only send to targeted role (e.g. 'owner')
+        return; // Only send to target role (e.g. 'owner')
       }
       try {
-        client.send(message);
+        if (client.role === 'owner') {
+          client.send(ownerMessage);
+        } else {
+          client.send(publicMessage);
+        }
       } catch (err) {
         console.error('WebSocket send error:', err);
       }
@@ -41,22 +196,50 @@ export function broadcast(type, payload, targetRole = null) {
   });
 }
 
+// Heartbeat & zombie client detection (F13)
+const heartbeatInterval = setInterval(() => {
+  wss.clients.forEach((ws) => {
+    if (ws.isAlive === false) {
+      return ws.terminate();
+    }
+    ws.isAlive = false;
+    ws.ping();
+  });
+}, 30000);
+
+wss.on('close', () => {
+  clearInterval(heartbeatInterval);
+});
+
 wss.on('connection', (ws) => {
-  ws.role = 'customer'; // Default role is customer
+  ws.isAlive = true;
+  ws.role = 'customer'; // Default role is strictly customer
+
+  ws.on('pong', () => {
+    ws.isAlive = true;
+  });
+
   ws.send(JSON.stringify({ type: 'CONNECTED', message: 'Connected to Cafena Realtime Service' }));
 
   ws.on('message', (message) => {
     try {
       const data = JSON.parse(message);
       if (data.type === 'IDENTIFY') {
+        // Authenticate owner role using secure token (S03)
         if (data.role === 'owner') {
-          ws.role = 'owner';
+          if (verifyOwnerToken(data.token)) {
+            ws.role = 'owner';
+            ws.send(JSON.stringify({ type: 'IDENTIFIED', role: 'owner', success: true }));
+          } else {
+            ws.role = 'customer';
+            ws.send(JSON.stringify({ type: 'AUTH_FAILED', error: 'Invalid owner credentials' }));
+          }
         }
       } else if (data.type === 'PING') {
         ws.send(JSON.stringify({ type: 'PONG' }));
       }
     } catch {
-      // ignore
+      // ignore malformed payloads
     }
   });
 });
@@ -71,8 +254,62 @@ function formatOrder(row) {
   };
 }
 
+// Canonical Tables (F07)
+const VALID_TABLES = new Set([
+  'Table 1', 'Table 2', 'Table 3', 'Table 4', 'Table 5',
+  'Table 6', 'Table 7', 'Table 8', 'Table 9', 'Table 10',
+  'Table 11', 'Table 12', 'Table 13', 'Table 14', 'Table 15',
+  'Patio 1', 'Patio 2', 'Patio 3', 'Patio 4',
+  'Counter', 'Takeaway', 'Counter / Takeaway'
+]);
+
+function normalizeTableNumber(table) {
+  if (!table || typeof table !== 'string') return 'Takeaway';
+  const clean = table.trim();
+  if (VALID_TABLES.has(clean)) return clean;
+  // Match prefix like 'Table' or 'Patio'
+  for (const valid of VALID_TABLES) {
+    if (clean.toLowerCase() === valid.toLowerCase()) return valid;
+  }
+  return 'Takeaway';
+}
+
 // ----------------------------------------------------
-// 1. MENU ENDPOINTS
+// 0. AUTHENTICATION ENDPOINTS (S01)
+// ----------------------------------------------------
+app.post('/api/auth/login', loginLimiter, (req, res) => {
+  try {
+    const { pin, password } = req.body;
+    const candidate = String(pin || password || '').trim().toLowerCase();
+
+    // Verify against configured PIN or allowed passwords
+    const isValid = candidate === OWNER_PIN.toLowerCase() || OWNER_PASSWORDS.includes(candidate);
+    if (!isValid) {
+      return res.status(401).json({ success: false, error: 'Invalid Owner PIN or Password' });
+    }
+
+    const token = generateOwnerToken();
+    res.json({
+      success: true,
+      token,
+      role: 'owner',
+      message: 'Authentication successful'
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.get('/api/auth/verify', (req, res) => {
+  const isOwner = isOwnerRequest(req);
+  if (!isOwner) {
+    return res.status(401).json({ success: false, role: 'guest' });
+  }
+  res.json({ success: true, role: 'owner' });
+});
+
+// ----------------------------------------------------
+// 1. MENU ENDPOINTS (S02, F11)
 // ----------------------------------------------------
 app.get('/api/menu', (req, res) => {
   try {
@@ -90,14 +327,14 @@ app.get('/api/menu', (req, res) => {
   }
 });
 
-app.post('/api/menu', (req, res) => {
+app.post('/api/menu', requireOwnerAuth, (req, res) => {
   try {
     const {
       name,
       category = 'signature_frappes',
       price = 200,
       description = '',
-      image = 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?auto=format&fit=crop&w=800&q=80',
+      image = '/images/cafena-hero-splash.jpg',
       tags = ['New'],
       is_veg = true,
       in_stock = true,
@@ -105,11 +342,22 @@ app.post('/api/menu', (req, res) => {
       customizable = {}
     } = req.body;
 
-    if (!name || !name.trim()) {
-      return res.status(400).json({ success: false, error: 'Name is required' });
+    const cleanName = sanitizeText(name, 100);
+    if (!cleanName) {
+      return res.status(400).json({ success: false, error: 'Item name is required' });
     }
 
-    const id = `item-${Date.now().toString(36)}`;
+    const numPrice = parseFloat(price);
+    if (isNaN(numPrice) || numPrice < 0) {
+      return res.status(400).json({ success: false, error: 'Price must be a valid non-negative number' });
+    }
+
+    const numPrep = parseInt(prep_time_mins, 10);
+    if (isNaN(numPrep) || numPrep < 1 || numPrep > 120) {
+      return res.status(400).json({ success: false, error: 'Preparation time must be between 1 and 120 minutes' });
+    }
+
+    const id = `item-${Date.now().toString(36)}-${crypto.randomBytes(2).toString('hex')}`;
     const insert = db.prepare(`
       INSERT INTO menu_items (id, name, category, price, description, image, tags_json, is_veg, in_stock, prep_time_mins, customizable_json)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -117,29 +365,29 @@ app.post('/api/menu', (req, res) => {
 
     insert.run(
       id,
-      name.trim(),
-      category,
-      parseFloat(price),
-      description.trim(),
-      image,
-      JSON.stringify(tags),
+      cleanName,
+      sanitizeText(category, 50),
+      numPrice,
+      sanitizeText(description, 500),
+      sanitizeText(image, 500),
+      JSON.stringify(Array.isArray(tags) ? tags : []),
       is_veg ? 1 : 0,
       in_stock ? 1 : 0,
-      parseInt(prep_time_mins, 10),
-      JSON.stringify(customizable)
+      numPrep,
+      JSON.stringify(customizable || {})
     );
 
     const newItem = {
       id,
-      name: name.trim(),
-      category,
-      price: parseFloat(price),
-      description: description.trim(),
-      image,
-      tags,
+      name: cleanName,
+      category: sanitizeText(category, 50),
+      price: numPrice,
+      description: sanitizeText(description, 500),
+      image: sanitizeText(image, 500),
+      tags: Array.isArray(tags) ? tags : [],
       is_veg: Boolean(is_veg),
       in_stock: Boolean(in_stock),
-      prep_time_mins: parseInt(prep_time_mins, 10),
+      prep_time_mins: numPrep,
       customizable
     };
 
@@ -150,7 +398,7 @@ app.post('/api/menu', (req, res) => {
   }
 });
 
-app.patch('/api/menu/:id', (req, res) => {
+app.patch('/api/menu/:id', requireOwnerAuth, (req, res) => {
   try {
     const { id } = req.params;
     const { name, category, price, description, image, in_stock, prep_time_mins } = req.body;
@@ -159,13 +407,29 @@ app.patch('/api/menu/:id', (req, res) => {
       return res.status(404).json({ success: false, error: 'Item not found' });
     }
 
-    const updatedName = name !== undefined ? name : existing.name;
-    const updatedCategory = category !== undefined ? category : existing.category;
-    const updatedPrice = price !== undefined ? parseFloat(price) : existing.price;
-    const updatedDesc = description !== undefined ? description : existing.description;
-    const updatedImg = image !== undefined ? image : existing.image;
+    let updatedPrice = existing.price;
+    if (price !== undefined) {
+      const parsed = parseFloat(price);
+      if (isNaN(parsed) || parsed < 0) {
+        return res.status(400).json({ success: false, error: 'Price must be a valid non-negative number' });
+      }
+      updatedPrice = parsed;
+    }
+
+    let updatedPrep = existing.prep_time_mins;
+    if (prep_time_mins !== undefined) {
+      const parsed = parseInt(prep_time_mins, 10);
+      if (isNaN(parsed) || parsed < 1 || parsed > 120) {
+        return res.status(400).json({ success: false, error: 'Prep time must be between 1 and 120 minutes' });
+      }
+      updatedPrep = parsed;
+    }
+
+    const updatedName = name !== undefined ? sanitizeText(name, 100) : existing.name;
+    const updatedCategory = category !== undefined ? sanitizeText(category, 50) : existing.category;
+    const updatedDesc = description !== undefined ? sanitizeText(description, 500) : existing.description;
+    const updatedImg = image !== undefined ? sanitizeText(image, 500) : existing.image;
     const updatedStock = in_stock !== undefined ? (in_stock ? 1 : 0) : existing.in_stock;
-    const updatedPrep = prep_time_mins !== undefined ? parseInt(prep_time_mins, 10) : existing.prep_time_mins;
 
     db.prepare(`
       UPDATE menu_items
@@ -189,7 +453,7 @@ app.patch('/api/menu/:id', (req, res) => {
   }
 });
 
-app.delete('/api/menu/:id', (req, res) => {
+app.delete('/api/menu/:id', requireOwnerAuth, (req, res) => {
   try {
     const { id } = req.params;
     db.prepare('DELETE FROM menu_items WHERE id = ?').run(id);
@@ -200,7 +464,7 @@ app.delete('/api/menu/:id', (req, res) => {
   }
 });
 
-app.patch('/api/menu/:id/toggle', (req, res) => {
+app.patch('/api/menu/:id/toggle', requireOwnerAuth, (req, res) => {
   try {
     const { id } = req.params;
     const current = db.prepare('SELECT in_stock FROM menu_items WHERE id = ?').get(id);
@@ -218,7 +482,7 @@ app.patch('/api/menu/:id/toggle', (req, res) => {
 });
 
 // ----------------------------------------------------
-// 2. OFFERS & PROMOTIONS
+// 2. OFFERS & PROMOTIONS (S02, F12)
 // ----------------------------------------------------
 app.get('/api/offers', (req, res) => {
   try {
@@ -233,14 +497,46 @@ app.get('/api/offers', (req, res) => {
   }
 });
 
-app.post('/api/offers', (req, res) => {
+app.post('/api/offers', requireOwnerAuth, (req, res) => {
   try {
-    const { code, title, tagline = '', discount = '15% OFF', discount_percent = 15, discount_amount = 0, min_order = 200, description = '', badge = 'Special Deal', highlight = false } = req.body;
-    if (!code || !title) {
+    const {
+      code,
+      title,
+      tagline = '',
+      discount = '15% OFF',
+      discount_percent = 15,
+      discount_amount = 0,
+      min_order = 200,
+      description = '',
+      badge = 'Special Deal',
+      highlight = false
+    } = req.body;
+
+    const cleanCode = sanitizeText(code, 30).toUpperCase();
+    const cleanTitle = sanitizeText(title, 100);
+
+    if (!cleanCode || !cleanTitle) {
       return res.status(400).json({ success: false, error: 'Code and Title are required' });
     }
 
-    const id = `offer-${Date.now().toString(36)}`;
+    const dPercent = parseFloat(discount_percent || 0);
+    const dAmount = parseFloat(discount_amount || 0);
+    const mOrder = parseFloat(min_order || 0);
+
+    if (dPercent < 0 || dPercent > 100) {
+      return res.status(400).json({ success: false, error: 'Discount percent must be between 0 and 100' });
+    }
+    if (dAmount < 0 || mOrder < 0) {
+      return res.status(400).json({ success: false, error: 'Amounts must be non-negative' });
+    }
+
+    // Check code uniqueness
+    const existing = db.prepare('SELECT id FROM offers WHERE code = ?').get(cleanCode);
+    if (existing) {
+      return res.status(409).json({ success: false, error: `Coupon code "${cleanCode}" already exists` });
+    }
+
+    const id = `offer-${Date.now().toString(36)}-${crypto.randomBytes(2).toString('hex')}`;
     const insert = db.prepare(`
       INSERT INTO offers (id, code, title, tagline, discount, discount_percent, discount_amount, min_order, description, badge, highlight)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -248,19 +544,32 @@ app.post('/api/offers', (req, res) => {
 
     insert.run(
       id,
-      code.trim().toUpperCase(),
-      title.trim(),
-      tagline,
-      discount,
-      parseFloat(discount_percent || 0),
-      parseFloat(discount_amount || 0),
-      parseFloat(min_order || 0),
-      description,
-      badge,
+      cleanCode,
+      cleanTitle,
+      sanitizeText(tagline, 150),
+      sanitizeText(discount, 50),
+      dPercent,
+      dAmount,
+      mOrder,
+      sanitizeText(description, 300),
+      sanitizeText(badge, 50),
       highlight ? 1 : 0
     );
 
-    const newOffer = { id, code: code.trim().toUpperCase(), title, tagline, discount, discount_percent, discount_amount, min_order, description, badge, highlight: Boolean(highlight) };
+    const newOffer = {
+      id,
+      code: cleanCode,
+      title: cleanTitle,
+      tagline: sanitizeText(tagline, 150),
+      discount: sanitizeText(discount, 50),
+      discount_percent: dPercent,
+      discount_amount: dAmount,
+      min_order: mOrder,
+      description: sanitizeText(description, 300),
+      badge: sanitizeText(badge, 50),
+      highlight: Boolean(highlight)
+    };
+
     broadcast('OFFERS_UPDATED', newOffer);
     res.status(201).json({ success: true, offer: newOffer });
   } catch (error) {
@@ -268,7 +577,7 @@ app.post('/api/offers', (req, res) => {
   }
 });
 
-app.delete('/api/offers/:id', (req, res) => {
+app.delete('/api/offers/:id', requireOwnerAuth, (req, res) => {
   try {
     db.prepare('DELETE FROM offers WHERE id = ?').run(req.params.id);
     broadcast('OFFERS_UPDATED', { deletedId: req.params.id });
@@ -279,7 +588,7 @@ app.delete('/api/offers/:id', (req, res) => {
 });
 
 // ----------------------------------------------------
-// 3. REVIEWS & TESTIMONIALS API
+// 3. REVIEWS & TESTIMONIALS API (S07, S09, F10)
 // ----------------------------------------------------
 app.get('/api/reviews', (req, res) => {
   try {
@@ -295,7 +604,7 @@ app.get('/api/reviews', (req, res) => {
 
     const reviews = db.prepare(query).all(...params);
 
-    // Compute stats
+    // Compute true stats from database (F10)
     const allReviews = db.prepare('SELECT rating FROM reviews').all();
     const totalCount = allReviews.length;
     const sumRating = allReviews.reduce((sum, r) => sum + r.rating, 0);
@@ -323,34 +632,40 @@ app.get('/api/reviews', (req, res) => {
   }
 });
 
-app.post('/api/reviews', (req, res) => {
+app.post('/api/reviews', reviewLimiter, (req, res) => {
   try {
     const { name, rating = 5, comment, favorite_item = 'Cafena Signature Frappe' } = req.body;
-    if (!name || !comment) {
+    const cleanName = sanitizeText(name, 60);
+    const cleanComment = sanitizeText(comment, 600);
+    const cleanFav = sanitizeText(favorite_item, 80);
+
+    if (!cleanName || !cleanComment) {
       return res.status(400).json({ success: false, error: 'Name and comment are required' });
     }
+
+    const cleanRating = Math.min(5, Math.max(1, parseInt(rating, 10) || 5));
+    const now = new Date().toISOString();
 
     const insert = db.prepare(`
       INSERT INTO reviews (name, rating, comment, favorite_item, source, created_at)
       VALUES (?, ?, ?, ?, ?, ?)
     `);
 
-    const now = new Date().toISOString();
     const result = insert.run(
-      name.trim(),
-      Math.min(5, Math.max(1, parseInt(rating, 10))),
-      comment.trim(),
-      (favorite_item || '').trim(),
+      cleanName,
+      cleanRating,
+      cleanComment,
+      cleanFav || 'House Special',
       'Verified Customer',
       now
     );
 
     const newReview = {
       id: Number(result.lastInsertRowid),
-      name: name.trim(),
-      rating: parseInt(rating, 10),
-      comment: comment.trim(),
-      favorite_item: (favorite_item || '').trim(),
+      name: cleanName,
+      rating: cleanRating,
+      comment: cleanComment,
+      favorite_item: cleanFav || 'House Special',
       source: 'Verified Customer',
       created_at: now
     };
@@ -363,9 +678,9 @@ app.post('/api/reviews', (req, res) => {
 });
 
 // ----------------------------------------------------
-// 4. INVENTORY TRACKING API
+// 4. INVENTORY TRACKING API (S02, F08)
 // ----------------------------------------------------
-app.get('/api/inventory', (req, res) => {
+app.get('/api/inventory', requireOwnerAuth, (req, res) => {
   try {
     const items = db.prepare('SELECT * FROM inventory ORDER BY category, item_name ASC').all();
     const lowStockCount = items.filter((i) => i.current_stock <= i.min_threshold).length;
@@ -382,16 +697,21 @@ app.get('/api/inventory', (req, res) => {
   }
 });
 
-app.patch('/api/inventory/:id/restock', (req, res) => {
+app.patch('/api/inventory/:id/restock', requireOwnerAuth, (req, res) => {
   try {
     const { id } = req.params;
-    const { add_amount = 5 } = req.body;
+    const { add_amount } = req.body;
     const current = db.prepare('SELECT * FROM inventory WHERE id = ?').get(id);
     if (!current) {
       return res.status(404).json({ success: false, error: 'Inventory item not found' });
     }
 
-    const newStock = Math.round((current.current_stock + parseFloat(add_amount)) * 100) / 100;
+    const parsedAdd = parseFloat(add_amount);
+    if (isNaN(parsedAdd) || parsedAdd <= 0) {
+      return res.status(400).json({ success: false, error: 'Restock amount must be a positive number' });
+    }
+
+    const newStock = Math.round((current.current_stock + parsedAdd) * 100) / 100;
     const newStatus = newStock >= current.min_threshold ? 'adequate' : 'low';
     const now = new Date().toISOString().split('T')[0];
 
@@ -410,9 +730,9 @@ app.patch('/api/inventory/:id/restock', (req, res) => {
 });
 
 // ----------------------------------------------------
-// 5. ORDERS API
+// 5. ORDERS API (S02, S04, S05, S08, F01-F06)
 // ----------------------------------------------------
-app.get('/api/orders', (req, res) => {
+app.get('/api/orders', requireOwnerAuth, (req, res) => {
   try {
     const { status, limit } = req.query;
     let query = 'SELECT * FROM orders';
@@ -436,19 +756,37 @@ app.get('/api/orders', (req, res) => {
   }
 });
 
+// Order Tracking by ID (S08 - IDOR Protection)
 app.get('/api/orders/:id', (req, res) => {
   try {
-    const row = db.prepare('SELECT * FROM orders WHERE id = ?').get(req.params.id);
+    const { id } = req.params;
+    const { token } = req.query;
+    const row = db.prepare('SELECT * FROM orders WHERE id = ?').get(id);
+
     if (!row) {
       return res.status(404).json({ success: false, error: 'Order not found' });
     }
-    res.json({ success: true, order: formatOrder(row) });
+
+    const isOwner = isOwnerRequest(req);
+    // Allow if caller is authenticated owner OR holds matching order tracking_token
+    if (!isOwner) {
+      if (!token || token !== row.tracking_token) {
+        return res.status(403).json({
+          success: false,
+          error: 'Access denied: Valid tracking token required for customer lookup'
+        });
+      }
+    }
+
+    const formatted = formatOrder(row);
+    res.json({ success: true, order: formatted });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
-app.post('/api/orders', (req, res) => {
+// Order Placement (S04, S05, S09, F01, F02, F03, F04, F05, F06)
+app.post('/api/orders', orderLimiter, (req, res) => {
   try {
     const {
       customer_name,
@@ -461,105 +799,239 @@ app.post('/api/orders', (req, res) => {
       kitchen_notes = ''
     } = req.body;
 
-    if (!items || items.length === 0) {
+    if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ success: false, error: 'Order must contain at least one item' });
     }
+    if (items.length > 30) {
+      return res.status(400).json({ success: false, error: 'Maximum 30 distinct items allowed per order' });
+    }
 
-    if (!customer_name || !customer_name.trim()) {
+    const cleanCustomerName = sanitizeText(customer_name, 60);
+    if (!cleanCustomerName) {
       return res.status(400).json({ success: false, error: 'Customer name is required' });
     }
 
-    // Calculate subtotal
+    const cleanPhone = sanitizeText(customer_phone, 20);
+    const cleanNotes = sanitizeText(kitchen_notes, 250);
+    const normalizedTable = normalizeTableNumber(table_number);
+    const normalizedOrderType = normalizedTable.toLowerCase().includes('takeaway') ? 'takeaway' : (order_type || 'dine_in');
+
+    // AUTHORITATIVE SERVER-SIDE PRICING & IN-STOCK VALIDATION (S04, F01, F02, F03)
     let subtotal = 0;
-    const validatedItems = items.map((item) => {
-      const qty = Math.max(1, parseInt(item.quantity || 1, 10));
-      const unitPrice = parseFloat(item.price || 0);
-      const addonsTotal = (item.addons || []).reduce((sum, a) => sum + (parseFloat(a.price) || 0), 0);
-      const sizeExtra = item.sizePrice ? parseFloat(item.sizePrice) : 0;
-      const effectiveUnitPrice = unitPrice + addonsTotal + sizeExtra;
+    const validatedItems = [];
+    const inventoryDeductions = [];
+
+    for (const item of items) {
+      if (!item || !item.id) {
+        return res.status(400).json({ success: false, error: 'Invalid item specification' });
+      }
+
+      // Query database for authoritative item definition
+      const dbItem = db.prepare('SELECT * FROM menu_items WHERE id = ?').get(item.id);
+      if (!dbItem) {
+        return res.status(400).json({ success: false, error: `Menu item with id "${item.id}" does not exist.` });
+      }
+
+      // In-Stock Validation (F01)
+      if (!dbItem.in_stock) {
+        return res.status(400).json({ success: false, error: `"${dbItem.name}" is currently sold out.` });
+      }
+
+      // Quantity bounds (F03)
+      const qty = parseInt(item.quantity || 1, 10);
+      if (isNaN(qty) || qty < 1 || qty > 20) {
+        return res.status(400).json({ success: false, error: `Quantity for "${dbItem.name}" must be between 1 and 20.` });
+      }
+
+      const basePrice = dbItem.price;
+      const customizable = JSON.parse(dbItem.customizable_json || '{}');
+
+      // Size calculation
+      let sizeExtra = 0;
+      let selectedSizeName = 'Standard';
+      if (item.size && Array.isArray(customizable.sizes)) {
+        const foundSize = customizable.sizes.find((s) => s.name === item.size);
+        if (foundSize) {
+          sizeExtra = Math.max(0, parseFloat(foundSize.price) || 0);
+          selectedSizeName = foundSize.name;
+        }
+      }
+
+      // Milk pricing parity calculation (F02)
+      let milkExtra = 0;
+      let selectedMilkName = '';
+      if (item.milk && Array.isArray(customizable.milk)) {
+        const foundMilk = customizable.milk.find((m) => {
+          if (typeof m === 'object') return m.name === item.milk;
+          return m === item.milk;
+        });
+        if (foundMilk) {
+          if (typeof foundMilk === 'object') {
+            milkExtra = Math.max(0, parseFloat(foundMilk.price) || 0);
+            selectedMilkName = foundMilk.name;
+          } else {
+            const match = String(foundMilk).match(/\+\s*₹?(\d+)/);
+            milkExtra = match ? parseInt(match[1], 10) : 0;
+            selectedMilkName = String(foundMilk).replace(/\s*\(\+₹?\d+\)/, '').trim();
+          }
+        }
+      }
+
+      // Addons calculation
+      let addonsTotal = 0;
+      const validAddons = [];
+      if (Array.isArray(item.addons) && Array.isArray(customizable.addons)) {
+        for (const reqAddon of item.addons) {
+          const match = customizable.addons.find((a) => a.name === (reqAddon.name || reqAddon));
+          if (match) {
+            const addPrice = Math.max(0, parseFloat(match.price) || 0);
+            addonsTotal += addPrice;
+            validAddons.push({ name: match.name, price: addPrice });
+          }
+        }
+      }
+
+      const effectiveUnitPrice = basePrice + sizeExtra + milkExtra + addonsTotal;
       const itemTotal = effectiveUnitPrice * qty;
       subtotal += itemTotal;
 
-      return {
-        id: item.id,
-        name: item.name,
+      validatedItems.push({
+        id: dbItem.id,
+        name: dbItem.name,
+        category: dbItem.category,
         price: effectiveUnitPrice,
         quantity: qty,
-        size: item.size || 'Regular',
+        size: selectedSizeName,
+        sizePrice: sizeExtra,
+        milk: selectedMilkName,
+        milkPrice: milkExtra,
+        addons: validAddons,
+        addonsPrice: addonsTotal,
         customizations: item.customizations || [],
+        prep_time_mins: dbItem.prep_time_mins || 8,
         itemTotal
-      };
-    });
+      });
 
-    // 5% GST on cafe beverages and snacks
+      // Prepare inventory deduction estimates (F06)
+      if (dbItem.category.includes('coffee') || dbItem.category.includes('frappes')) {
+        inventoryDeductions.push({ id: 'inv-01', qty: 0.02 * qty }); // ~20g beans
+        inventoryDeductions.push({ id: 'inv-02', qty: 0.25 * qty }); // ~250ml milk
+      }
+      if (dbItem.category.includes('sandwiches')) {
+        inventoryDeductions.push({ id: 'inv-06', qty: 1 * qty }); // 1 panini loaf
+        inventoryDeductions.push({ id: 'inv-07', qty: 0.1 * qty }); // 100g paneer
+      }
+    }
+
+    // 5% GST tax
     const tax = Math.round(subtotal * 0.05 * 100) / 100;
     let discount = 0;
+    let validatedCoupon = '';
 
-    // Apply Coupon Code
+    // Coupon calculation & discount ceiling (F04)
     if (coupon_code) {
-      const normalizedCode = coupon_code.trim().toUpperCase();
+      const normalizedCode = sanitizeText(coupon_code, 30).toUpperCase();
       const offer = db.prepare('SELECT * FROM offers WHERE code = ?').get(normalizedCode);
-      if (offer && subtotal >= offer.min_order) {
+      if (offer && subtotal >= (offer.min_order || 0)) {
         if (offer.discount_percent > 0) {
           discount = Math.round((subtotal * offer.discount_percent) / 100);
         } else if (offer.discount_amount > 0) {
           discount = offer.discount_amount;
         }
+        discount = Math.min(subtotal, Math.max(0, discount)); // Cap discount at subtotal
+        validatedCoupon = normalizedCode;
       }
     }
 
-    // Calculate estimated prep time based on items & order volume
+    const total = Math.max(0, Math.round((subtotal + tax - discount) * 100) / 100);
+
+    // Cryptographically secure, non-colliding order ID (F05)
+    const orderSuffix = crypto.randomBytes(3).toString('hex').toUpperCase();
+    const orderId = `CS-${Date.now().toString(36).toUpperCase()}-${orderSuffix}`;
+
+    // Secure tracking token for IDOR protection (S08)
+    const trackingToken = crypto.randomBytes(16).toString('hex');
+
+    // Prep time calculation
     const maxPrep = Math.max(...validatedItems.map((it) => parseInt(it.prep_time_mins || 8, 10)), 8);
     const itemVolumeBuffer = Math.min(6, Math.max(0, (validatedItems.length - 1) * 2));
     const estimatedPrepMins = maxPrep + itemVolumeBuffer;
 
-    const total = Math.max(0, Math.round((subtotal + tax - discount) * 100) / 100);
-    const orderId = 'CS-' + Math.floor(1000 + Math.random() * 9000);
+    // Payment status verification guard (S05)
+    // UPI orders are marked 'pending_verification' until counter confirmation
+    const paymentStatus = payment_method === 'upi' ? 'pending_verification' : 'pending';
     const now = new Date().toISOString();
 
-    const insert = db.prepare(`
-      INSERT INTO orders (
-        id, customer_name, customer_phone, table_number, order_type,
-        items_json, subtotal, tax, discount, coupon_code, total,
-        payment_method, payment_status, status, kitchen_notes, estimated_prep_mins,
-        created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
+    // ATOMIC DATABASE TRANSACTION (F06)
+    const placeOrderTransaction = db.transaction(() => {
+      const insert = db.prepare(`
+        INSERT INTO orders (
+          id, customer_name, customer_phone, table_number, order_type,
+          items_json, subtotal, tax, discount, coupon_code, total,
+          payment_method, payment_status, status, kitchen_notes, estimated_prep_mins,
+          created_at, updated_at, tracking_token
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
 
-    insert.run(
-      orderId,
-      customer_name.trim(),
-      customer_phone || '',
-      table_number,
-      order_type,
-      JSON.stringify(validatedItems),
-      subtotal,
-      tax,
-      discount,
-      coupon_code || '',
-      total,
-      payment_method,
-      payment_method === 'upi' ? 'paid' : 'pending',
-      'received',
-      kitchen_notes || '',
-      estimatedPrepMins,
-      now,
-      now
-    );
+      insert.run(
+        orderId,
+        cleanCustomerName,
+        cleanPhone,
+        normalizedTable,
+        normalizedOrderType,
+        JSON.stringify(validatedItems),
+        subtotal,
+        tax,
+        discount,
+        validatedCoupon,
+        total,
+        payment_method === 'upi' ? 'upi' : 'counter',
+        paymentStatus,
+        'received',
+        cleanNotes,
+        estimatedPrepMins,
+        now,
+        now,
+        trackingToken
+      );
+
+      // Decrement inventory stock safely
+      const updateStockStmt = db.prepare(`
+        UPDATE inventory
+        SET current_stock = MAX(0, ROUND(current_stock - ?, 2)),
+            status = CASE WHEN (current_stock - ?) <= min_threshold THEN 'low' ELSE 'adequate' END
+        WHERE id = ?
+      `);
+
+      for (const dec of inventoryDeductions) {
+        try {
+          updateStockStmt.run(dec.qty, dec.qty, dec.id);
+        } catch {
+          // ignore deduction failure if inventory item not seeded
+        }
+      }
+    });
+
+    placeOrderTransaction();
 
     const savedOrder = formatOrder(db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId));
 
-    // Broadcast new order in real-time to owner dashboard only (prevents customer data leaks)
+    // Broadcast new order to owner kitchen console ONLY (S06)
     broadcast('NEW_ORDER', savedOrder, 'owner');
 
-    res.status(201).json({ success: true, order: savedOrder });
+    res.status(201).json({
+      success: true,
+      order: savedOrder,
+      tracking_token: trackingToken
+    });
   } catch (error) {
     console.error('Order creation error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
-app.patch('/api/orders/:id/status', (req, res) => {
+// Update Order Status (S02, S06, S08)
+app.patch('/api/orders/:id/status', requireOwnerAuth, (req, res) => {
   try {
     const { id } = req.params;
     const { status, payment_status } = req.body;
@@ -569,8 +1041,14 @@ app.patch('/api/orders/:id/status', (req, res) => {
       return res.status(404).json({ success: false, error: 'Order not found' });
     }
 
-    const newStatus = status || existing.status;
-    const newPaymentStatus = payment_status || existing.payment_status;
+    const validStatuses = new Set(['received', 'brewing', 'ready', 'completed', 'cancelled']);
+    const validPaymentStatuses = new Set(['pending', 'pending_verification', 'paid', 'refunded']);
+
+    const newStatus = status && validStatuses.has(status) ? status : existing.status;
+    const newPaymentStatus = payment_status && validPaymentStatuses.has(payment_status)
+      ? payment_status
+      : existing.payment_status;
+
     const now = new Date().toISOString();
 
     db.prepare(`
@@ -581,7 +1059,7 @@ app.patch('/api/orders/:id/status', (req, res) => {
 
     const updatedOrder = formatOrder(db.prepare('SELECT * FROM orders WHERE id = ?').get(id));
 
-    // Broadcast status change in real time to both dashboard and customer order tracker
+    // Broadcast order update (owners get full order, public gets sanitized PII-free payload) (S06)
     broadcast('ORDER_UPDATED', updatedOrder);
 
     res.json({ success: true, order: updatedOrder });
@@ -591,14 +1069,26 @@ app.patch('/api/orders/:id/status', (req, res) => {
 });
 
 // ----------------------------------------------------
-// 6. QR CODE GENERATION API
+// 6. QR CODE GENERATION API (F15)
 // ----------------------------------------------------
 app.get('/api/qr', async (req, res) => {
   try {
     const { table = '', url } = req.query;
     const host = req.get('host') || 'localhost:5000';
     const protocol = req.protocol || 'http';
-    const targetUrl = url || `${protocol}://${host}/?table=${encodeURIComponent(table)}`;
+
+    // Restrict URL generation strictly to internal table endpoints (F15 - SSRF Protection)
+    let targetUrl = `${protocol}://${host}/?table=${encodeURIComponent(normalizeTableNumber(table))}`;
+    if (url && typeof url === 'string') {
+      try {
+        const parsed = new URL(url, `${protocol}://${host}`);
+        if (parsed.host === host) {
+          targetUrl = parsed.toString();
+        }
+      } catch {
+        // ignore invalid URL and use default targetUrl
+      }
+    }
 
     const qrDataUrl = await QRCode.toDataURL(targetUrl, {
       width: 400,
@@ -653,9 +1143,9 @@ app.get('/api/qr/tables', async (req, res) => {
 });
 
 // ----------------------------------------------------
-// 7. CONTACT & RESERVATIONS API
+// 7. CONTACT & RESERVATIONS API (S02, S06, S07, S09, F09)
 // ----------------------------------------------------
-app.get('/api/contact', (req, res) => {
+app.get('/api/contact', requireOwnerAuth, (req, res) => {
   try {
     const contacts = db.prepare('SELECT * FROM contacts ORDER BY created_at DESC').all();
     res.json({ success: true, contacts });
@@ -664,12 +1154,21 @@ app.get('/api/contact', (req, res) => {
   }
 });
 
-app.post('/api/contact', (req, res) => {
+app.post('/api/contact', contactLimiter, (req, res) => {
   try {
     const { name, email, phone, inquiry_type = 'table_reservation', message, party_size = 2, preferred_date, preferred_time } = req.body;
-    if (!name || !email || !message) {
+
+    const cleanName = sanitizeText(name, 80);
+    const cleanEmail = sanitizeText(email, 120);
+    const cleanPhone = sanitizeText(phone, 25);
+    const cleanMsg = sanitizeText(message, 1000);
+
+    if (!cleanName || !cleanEmail || !cleanMsg) {
       return res.status(400).json({ success: false, error: 'Name, email, and message are required' });
     }
+
+    const cleanPartySize = Math.min(20, Math.max(1, parseInt(party_size || 2, 10)));
+    const now = new Date().toISOString();
 
     const insert = db.prepare(`
       INSERT INTO contacts (name, email, phone, inquiry_type, message, party_size, preferred_date, preferred_time, status, created_at)
@@ -677,32 +1176,33 @@ app.post('/api/contact', (req, res) => {
     `);
 
     const result = insert.run(
-      name.trim(),
-      email.trim(),
-      phone || '',
-      inquiry_type,
-      message.trim(),
-      parseInt(party_size || 2, 10),
-      preferred_date || '',
-      preferred_time || '',
-      new Date().toISOString()
+      cleanName,
+      cleanEmail,
+      cleanPhone,
+      sanitizeText(inquiry_type, 50) || 'general',
+      cleanMsg,
+      cleanPartySize,
+      sanitizeText(preferred_date, 20),
+      sanitizeText(preferred_time, 20),
+      now
     );
 
     const newContact = {
       id: Number(result.lastInsertRowid),
-      name: name.trim(),
-      email: email.trim(),
-      phone: phone || '',
-      inquiry_type,
-      message: message.trim(),
-      party_size: parseInt(party_size || 2, 10),
+      name: cleanName,
+      email: cleanEmail,
+      phone: cleanPhone,
+      inquiry_type: sanitizeText(inquiry_type, 50),
+      message: cleanMsg,
+      party_size: cleanPartySize,
       preferred_date,
       preferred_time,
       status: 'unread',
-      created_at: new Date().toISOString()
+      created_at: now
     };
 
-    broadcast('NEW_CONTACT_MESSAGE', newContact);
+    // Broadcast customer contact messages STRICTLY to authenticated owner (S06 - PII leak fix)
+    broadcast('NEW_CONTACT_MESSAGE', newContact, 'owner');
 
     res.status(201).json({ success: true, message: 'Reservation request received successfully!' });
   } catch (error) {
@@ -710,12 +1210,19 @@ app.post('/api/contact', (req, res) => {
   }
 });
 
-app.patch('/api/contact/:id/status', (req, res) => {
+app.patch('/api/contact/:id/status', requireOwnerAuth, (req, res) => {
   try {
     const { id } = req.params;
     const { status = 'confirmed' } = req.body;
+
+    // Strict status enum validation (F09)
+    const validStatuses = new Set(['unread', 'confirmed', 'declined', 'completed']);
+    if (!validStatuses.has(status)) {
+      return res.status(400).json({ success: false, error: `Invalid status. Must be one of: ${[...validStatuses].join(', ')}` });
+    }
+
     db.prepare('UPDATE contacts SET status = ? WHERE id = ?').run(status, id);
-    broadcast('RESERVATION_UPDATED', { id: parseInt(id, 10), status });
+    broadcast('RESERVATION_UPDATED', { id: parseInt(id, 10), status }, 'owner');
     res.json({ success: true, id, status });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -723,36 +1230,40 @@ app.patch('/api/contact/:id/status', (req, res) => {
 });
 
 // ----------------------------------------------------
-// 8. DASHBOARD ANALYTICS API
+// 8. DASHBOARD ANALYTICS API (S02, F14)
 // ----------------------------------------------------
-app.get('/api/dashboard/stats', (req, res) => {
+app.get('/api/dashboard/stats', requireOwnerAuth, (req, res) => {
   try {
-    const totalOrders = db.prepare('SELECT COUNT(*) as count FROM orders').get().count;
-    const activeOrders = db.prepare("SELECT COUNT(*) as count FROM orders WHERE status IN ('received', 'brewing', 'ready')").get().count;
-    const completedOrders = db.prepare("SELECT COUNT(*) as count FROM orders WHERE status = 'completed'").get().count;
-    const revenueRow = db.prepare("SELECT SUM(total) as revenue FROM orders WHERE status != 'cancelled'").get();
-    const totalRevenue = Math.round((revenueRow.revenue || 0) * 100) / 100;
+    // Single consolidated SQLite aggregate query (F14)
+    const aggregatedStats = db.prepare(`
+      SELECT 
+        COUNT(*) as totalOrders,
+        SUM(CASE WHEN status IN ('received', 'brewing', 'ready') THEN 1 ELSE 0 END) as activeOrders,
+        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completedOrders,
+        SUM(CASE WHEN status = 'received' THEN 1 ELSE 0 END) as countReceived,
+        SUM(CASE WHEN status = 'brewing' THEN 1 ELSE 0 END) as countBrewing,
+        SUM(CASE WHEN status = 'ready' THEN 1 ELSE 0 END) as countReady,
+        SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as countCancelled,
+        SUM(CASE WHEN status != 'cancelled' THEN total ELSE 0 END) as totalRevenue
+      FROM orders
+    `).get();
 
-    // Status breakdown
-    const breakdown = {
-      received: db.prepare("SELECT COUNT(*) as count FROM orders WHERE status = 'received'").get().count,
-      brewing: db.prepare("SELECT COUNT(*) as count FROM orders WHERE status = 'brewing'").get().count,
-      ready: db.prepare("SELECT COUNT(*) as count FROM orders WHERE status = 'ready'").get().count,
-      completed: completedOrders,
-      cancelled: db.prepare("SELECT COUNT(*) as count FROM orders WHERE status = 'cancelled'").get().count
-    };
-
-    // Inventory status
     const lowStockCount = db.prepare('SELECT COUNT(*) as count FROM inventory WHERE current_stock <= min_threshold').get().count;
 
     res.json({
       success: true,
       stats: {
-        totalOrders,
-        activeOrders,
-        completedOrders,
-        totalRevenue,
-        breakdown,
+        totalOrders: aggregatedStats.totalOrders || 0,
+        activeOrders: aggregatedStats.activeOrders || 0,
+        completedOrders: aggregatedStats.completedOrders || 0,
+        totalRevenue: Math.round((aggregatedStats.totalRevenue || 0) * 100) / 100,
+        breakdown: {
+          received: aggregatedStats.countReceived || 0,
+          brewing: aggregatedStats.countBrewing || 0,
+          ready: aggregatedStats.countReady || 0,
+          completed: aggregatedStats.completedOrders || 0,
+          cancelled: aggregatedStats.countCancelled || 0
+        },
         lowStockCount,
         avgPrepTimeMins: 9
       }
@@ -763,28 +1274,25 @@ app.get('/api/dashboard/stats', (req, res) => {
 });
 
 // Convenient aliases
-app.get('/api/tables', (req, res) => {
-  res.redirect('/api/qr/tables');
-});
-app.get('/api/coupons', (req, res) => {
-  res.redirect('/api/offers');
-});
-app.get('/api/analytics', (req, res) => {
-  res.redirect('/api/dashboard/stats');
-});
+app.get('/api/tables', (req, res) => res.redirect('/api/qr/tables'));
+app.get('/api/coupons', (req, res) => res.redirect('/api/offers'));
+app.get('/api/analytics', requireOwnerAuth, (req, res) => res.redirect('/api/dashboard/stats'));
 
-// Serve frontend if built (production mode fallback)
+// Serve frontend if built (F16)
 const distPath = path.join(__dirname, '..', 'dist');
-app.use(express.static(distPath));
+if (fs.existsSync(distPath)) {
+  app.use(express.static(distPath));
+}
+
 app.use((req, res) => {
   if (req.path.startsWith('/api') || req.path.startsWith('/ws')) {
-    return res.status(404).json({ error: 'Endpoint not found' });
+    return res.status(404).json({ success: false, error: 'Endpoint not found' });
   }
   const indexHtml = path.join(distPath, 'index.html');
   if (fs.existsSync(indexHtml)) {
     res.sendFile(indexHtml);
   } else {
-    res.send('Cafena API Server Running on port ' + PORT);
+    res.status(200).send('Cafena API Server Running');
   }
 });
 

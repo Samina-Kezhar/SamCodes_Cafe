@@ -47,33 +47,28 @@ export function CartDrawer({
 
   const grandTotal = Math.max(0, Math.round((subtotal + tax - discount) * 100) / 100);
 
-  const handleApplyCoupon = () => {
+  const handleApplyCoupon = async () => {
     setCouponError('');
     const code = couponCode.trim().toUpperCase();
     if (!code) return;
 
-    if (code === 'BREW20') {
-      if (subtotal < 199) {
-        setCouponError('Minimum order of ₹199 required for BREW20');
-        return;
+    try {
+      const res = await fetch('/api/offers');
+      const data = await res.json();
+      if (data.success && data.offers) {
+        const found = data.offers.find((o) => o.code === code);
+        if (found) {
+          if (subtotal < (found.min_order || 0)) {
+            setCouponError(`Minimum order of ₹${found.min_order} required for ${found.code}`);
+            return;
+          }
+          setAppliedCoupon(found);
+          return;
+        }
       }
-      setAppliedCoupon({ code: 'BREW20', discount_percent: 20 });
-    } else if (code === 'COMBO349') {
-      if (subtotal < 450) {
-        setCouponError('Minimum order of ₹450 required for COMBO349');
-        return;
-      }
-      setAppliedCoupon({ code: 'COMBO349', discount_amount: 110 });
-    } else if (code === 'STUDENT15') {
-      if (subtotal < 250) {
-        setCouponError('Minimum order of ₹250 required for STUDENT15');
-        return;
-      }
-      setAppliedCoupon({ code: 'STUDENT15', discount_percent: 15 });
-    } else if (code === 'MIDNIGHT10') {
-      setAppliedCoupon({ code: 'MIDNIGHT10', discount_percent: 10 });
-    } else {
-      setCouponError('Invalid coupon code. Try BREW20 or STUDENT15');
+      setCouponError('Invalid coupon code. Check our Offers section.');
+    } catch {
+      setCouponError('Could not validate coupon. Please try again.');
     }
   };
 
@@ -96,14 +91,14 @@ export function CartDrawer({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          customer_name: customerName,
-          customer_phone: customerPhone,
+          customer_name: customerName.trim(),
+          customer_phone: customerPhone.trim(),
           table_number: orderType === 'takeaway' ? 'Takeaway' : tableNumber,
           order_type: orderType,
           items: cartItems,
           coupon_code: appliedCoupon ? appliedCoupon.code : '',
           payment_method: paymentMethod,
-          kitchen_notes: kitchenNotes
+          kitchen_notes: kitchenNotes.trim()
         })
       });
 
@@ -111,6 +106,11 @@ export function CartDrawer({
       if (!data.success) {
         throw new Error(data.error || 'Failed to place order');
       }
+
+      if (data.tracking_token) {
+        localStorage.setItem('coffeestand_active_order_token', data.tracking_token);
+      }
+      localStorage.setItem('coffeestand_active_order', JSON.stringify(data.order));
 
       // Confetti burst!
       confetti({
@@ -120,7 +120,9 @@ export function CartDrawer({
       });
 
       onClearCart();
-      onOrderPlaced(data.order);
+      if (onOrderPlaced) {
+        onOrderPlaced(data.order, data.tracking_token);
+      }
       onClose();
     } catch (err) {
       setSubmitError(err.message || 'Error submitting order');

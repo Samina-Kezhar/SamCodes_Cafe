@@ -1,12 +1,39 @@
 // Pure Web Audio API synthesizer for cafe chime notifications
+// Solves Autoplay Restriction & Resource Leaks via AudioContext Singleton (U09)
+let sharedAudioCtx = null;
+
+function getAudioContext() {
+  if (!sharedAudioCtx) {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (AudioContextClass) {
+      sharedAudioCtx = new AudioContextClass();
+    }
+  }
+  return sharedAudioCtx;
+}
+
+// User-gesture listener to unlock AudioContext in strict browsers
+if (typeof window !== 'undefined') {
+  const unlockAudio = () => {
+    if (sharedAudioCtx && sharedAudioCtx.state === 'suspended') {
+      sharedAudioCtx.resume().catch(() => {});
+    }
+  };
+  window.addEventListener('click', unlockAudio, { once: true, passive: true });
+  window.addEventListener('keydown', unlockAudio, { once: true, passive: true });
+}
+
 export function playChime() {
   try {
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContext) return;
-    const ctx = new AudioContext();
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
 
     const now = ctx.currentTime;
-    
+
     // First tone (E5 ~ 659Hz)
     const osc1 = ctx.createOscillator();
     const gain1 = ctx.createGain();
