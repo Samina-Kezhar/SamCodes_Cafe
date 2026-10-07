@@ -1,7 +1,8 @@
-import { DatabaseSync } from 'node:sqlite';
+import initSqlJs from 'sql.js';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { getStore } from '@netlify/blobs';
 import { initialMenuItems, initialOffers } from './menuData.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -9,14 +10,176 @@ const __dirname = path.dirname(__filename);
 
 const dataDir = path.join(__dirname, 'data');
 if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
+  try { fs.mkdirSync(dataDir, { recursive: true }); } catch {}
 }
 
 const dbPath = path.join(dataDir, 'coffeestand.db');
-export const db = new DatabaseSync(dbPath);
 
-// Enable WAL mode for high performance concurrent reading/writing
-db.exec('PRAGMA journal_mode = WAL;');
+let blobStore = null;
+function getBlobStore() {
+  if (!blobStore && process.env.NETLIFY) {
+    try {
+      blobStore = getStore('cafena-data');
+    } catch {
+      // not in netlify blobs context
+    }
+  }
+  return blobStore;
+}
+
+const SQL = await initSqlJs({
+  locateFile: (file) => {
+    const candidates = [
+      path.resolve(process.cwd(), 'node_modules/sql.js/dist', file),
+      path.resolve(__dirname, 'node_modules/sql.js/dist', file),
+      path.resolve(__dirname, file),
+      path.resolve(process.cwd(), file)
+    ];
+    for (const cand of candidates) {
+      if (fs.existsSync(cand)) return cand;
+    }
+    return file;
+  }
+});
+
+let rawDb = null;
+
+if (process.env.NETLIFY) {
+  const store = getBlobStore();
+  if (store) {
+    try {
+      const blob = await store.get('coffeestand.db', { type: 'arrayBuffer' });
+      if (blob && blob.byteLength > 0) {
+        rawDb = new SQL.Database(Buffer.from(blob));
+      }
+    } catch (e) {
+      console.warn('Netlify Blobs initial read notice:', e);
+    }
+  }
+}
+
+if (!rawDb) {
+  if (fs.existsSync(dbPath)) {
+    try {
+      const fileBuffer = fs.readFileSync(dbPath);
+      if (fileBuffer.length > 0) {
+        rawDb = new SQL.Database(fileBuffer);
+      }
+    } catch (e) {
+      console.warn('Local db read error:', e);
+    }
+  }
+}
+
+if (!rawDb) {
+  rawDb = new SQL.Database();
+}
+
+let isDirty = false;
+let savePending = false;
+let inTransaction = false;
+
+export async function saveDbNow() {
+  if (!rawDb || !isDirty || inTransaction) return;
+  const data = Buffer.from(rawDb.export());
+  try {
+    if (fs.existsSync(dataDir)) {
+      fs.writeFileSync(dbPath, data);
+    }
+  } catch {}
+  const store = getBlobStore();
+  if (store) {
+    try {
+      await store.set('coffeestand.db', data);
+      isDirty = false;
+    } catch (e) {
+      console.warn('Netlify Blobs write error in saveDbNow:', e);
+    }
+  }
+}
+
+export function scheduleSave() {
+  isDirty = true;
+  if (inTransaction) return;
+
+  try {
+    if (!process.env.NETLIFY && fs.existsSync(dataDir)) {
+      fs.writeFileSync(dbPath, Buffer.from(rawDb.export()));
+    }
+  } catch {}
+
+  const store = getBlobStore();
+  if (store && !savePending) {
+    savePending = true;
+    setTimeout(async () => {
+      savePending = false;
+      if (inTransaction) return;
+      try {
+        await store.set('coffeestand.db', Buffer.from(rawDb.export()));
+        isDirty = false;
+      } catch (err) {
+        console.warn('Failed to sync to Netlify Blobs:', err);
+      }
+    }, 150);
+  }
+}
+
+export const db = {
+  exec(sql) {
+    const trimmed = sql.trim();
+    if (/^BEGIN\b/i.test(trimmed)) {
+      inTransaction = true;
+      return rawDb.exec(sql);
+    }
+    if (/^COMMIT\b/i.test(trimmed)) {
+      inTransaction = false;
+      const res = rawDb.exec(sql);
+      scheduleSave();
+      return res;
+    }
+    if (/^ROLLBACK\b/i.test(trimmed)) {
+      inTransaction = false;
+      return rawDb.exec(sql);
+    }
+
+    const res = rawDb.exec(sql);
+    if (/^\s*(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE)\b/i.test(sql)) {
+      scheduleSave();
+    }
+    return res;
+  },
+  prepare(sql) {
+    return {
+      all(...params) {
+        const stmt = rawDb.prepare(sql);
+        if (params.length > 0) {
+          stmt.bind(params.map((p) => (p === undefined ? null : typeof p === 'boolean' ? (p ? 1 : 0) : p)));
+        }
+        const rows = [];
+        while (stmt.step()) {
+          rows.push(stmt.getAsObject());
+        }
+        stmt.free();
+        return rows;
+      },
+      get(...params) {
+        const rows = this.all(...params);
+        return rows.length > 0 ? rows[0] : undefined;
+      },
+      run(...params) {
+        const cleanParams = params.map((p) => (p === undefined ? null : typeof p === 'boolean' ? (p ? 1 : 0) : p));
+        rawDb.run(sql, cleanParams);
+        const changes = rawDb.getRowsModified();
+        const lastIdRes = rawDb.exec('SELECT last_insert_rowid() as id');
+        const lastInsertRowid = lastIdRes.length && lastIdRes[0].values.length ? lastIdRes[0].values[0][0] : 0;
+        scheduleSave();
+        return { changes, lastInsertRowid };
+      }
+    };
+  }
+};
+
+// Enable foreign keys
 db.exec('PRAGMA foreign_keys = ON;');
 
 // Initialize tables

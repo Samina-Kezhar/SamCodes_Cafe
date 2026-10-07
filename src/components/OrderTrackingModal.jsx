@@ -110,34 +110,73 @@ export function OrderTrackingModal({ isOpen, onClose, initialOrder }) {
     }
   };
 
-  // Real-time WebSocket listener for order updates
+  // Real-time synchronization for order updates (WebSocket + auto-sync polling)
   useEffect(() => {
-    if (!isOpen) return;
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws`;
-    let ws;
+    if (!isOpen || !order?.id) return;
 
-    try {
-      ws = new WebSocket(wsUrl);
-      ws.onmessage = (event) => {
+    let pollInterval = null;
+    if (order.status !== 'completed') {
+      const pollOrderStatus = async () => {
         try {
-          const data = JSON.parse(event.data);
-          if (data.type === 'ORDER_UPDATED' && data.payload && order && data.payload.id === order.id) {
-            setOrder((prev) => (prev ? { ...prev, ...data.payload } : data.payload));
-            playChime();
+          const token = order.tracking_token || localStorage.getItem('coffeestand_active_order_token') || '';
+          const url = token
+            ? `/api/orders/${encodeURIComponent(order.id)}?token=${encodeURIComponent(token)}`
+            : `/api/orders/${encodeURIComponent(order.id)}`;
+          const res = await fetch(url);
+          const data = await res.json();
+          if (data.success && data.order) {
+            setOrder((prev) => {
+              if (prev && prev.status !== data.order.status) {
+                playChime();
+              }
+              return data.order;
+            });
           }
         } catch {
           // ignore
         }
       };
-    } catch (err) {
-      console.warn('WS error in tracker:', err);
+      pollInterval = setInterval(pollOrderStatus, 3500);
     }
 
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws`;
+    let ws = null;
+    let wsAttempts = 0;
+
+    const connectWs = () => {
+      if (wsAttempts >= 2) return;
+      try {
+        ws = new WebSocket(wsUrl);
+        ws.onopen = () => {
+          wsAttempts = 0;
+        };
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'ORDER_UPDATED' && data.payload && order && data.payload.id === order.id) {
+              setOrder((prev) => (prev ? { ...prev, ...data.payload } : data.payload));
+              playChime();
+            }
+          } catch {
+            // ignore
+          }
+        };
+        ws.onclose = () => {
+          wsAttempts++;
+        };
+      } catch {
+        wsAttempts++;
+      }
+    };
+
+    connectWs();
+
     return () => {
+      if (pollInterval) clearInterval(pollInterval);
       if (ws) ws.close();
     };
-  }, [order?.id, isOpen]);
+  }, [order?.id, order?.status, isOpen]);
 
   if (!isOpen) return null;
 

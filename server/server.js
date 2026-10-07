@@ -1367,7 +1367,14 @@ app.use((req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
-  console.log(`☕ Cafena Backend running on http://localhost:${PORT}`);
-  console.log(`⚡ WebSocket Server active on ws://localhost:${PORT}/ws`);
-});
+const isServerless = !!(process.env.NETLIFY || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.LAMBDA_TASK_ROOT || process.env.SERVERLESS);
+const isDirectRun = Boolean(process.argv[1] && (path.resolve(process.argv[1]) === fileURLToPath(import.meta.url) || process.argv[1].endsWith('server.js')));
+
+if (!isServerless && isDirectRun && process.env.NODE_ENV !== 'test') {
+  server.listen(PORT, () => {
+    console.log(`☕ Cafena Backend running on http://localhost:${PORT}`);
+    console.log(`⚡ WebSocket Server active on ws://localhost:${PORT}/ws`);
+  });
+}
+
+export { app, server };

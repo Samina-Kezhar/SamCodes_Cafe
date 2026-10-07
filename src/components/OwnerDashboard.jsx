@@ -31,6 +31,8 @@ export function OwnerDashboard({ onCloseDashboard, onLogout, theme = 'modern-lat
   const [searchQuery, setSearchQuery] = useState('');
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [wsConnected, setWsConnected] = useState(false);
+  const [autoSyncActive, setAutoSyncActive] = useState(false);
+  const knownOrderIdsRef = useRef(new Set());
   const [loading, setLoading] = useState(true);
   const [selectedOrderForKOT, setSelectedOrderForKOT] = useState(null);
   const [allTableCards, setAllTableCards] = useState([]);
@@ -110,7 +112,10 @@ export function OwnerDashboard({ onCloseDashboard, onLogout, theme = 'modern-lat
         safeFetchJson('/api/reviews')
       ]);
 
-      if (ordersData?.success) setOrders(ordersData.orders || []);
+      if (ordersData?.success) {
+        setOrders(ordersData.orders || []);
+        knownOrderIdsRef.current = new Set((ordersData.orders || []).map((o) => o.id));
+      }
       if (statsData?.success) setStats(statsData.stats || stats);
       if (menuData?.success) setMenuItems(menuData.items || []);
       if (contactData?.success) setReservations(contactData.contacts || []);
@@ -135,14 +140,62 @@ export function OwnerDashboard({ onCloseDashboard, onLogout, theme = 'modern-lat
     soundEnabledRef.current = soundEnabled;
   }, [soundEnabled]);
 
-  // WebSocket real-time updates for owner
+  // Real-time synchronization (WebSocket with graceful HTTP auto-sync polling fallback)
   useEffect(() => {
     let ws = null;
     let reconnectTimer = null;
+    let pollInterval = null;
     let isDisposed = false;
+    let wsAttempts = 0;
+
+    const performSyncPoll = async () => {
+      if (isDisposed) return;
+      try {
+        const [ordersData, statsData] = await Promise.all([
+          safeFetchJson('/api/orders'),
+          safeFetchJson('/api/dashboard/stats')
+        ]);
+
+        if (ordersData?.success && Array.isArray(ordersData.orders)) {
+          setAutoSyncActive(true);
+          const incomingOrders = ordersData.orders;
+          let hasNewOrder = false;
+
+          for (const order of incomingOrders) {
+            if (!knownOrderIdsRef.current.has(order.id)) {
+              hasNewOrder = true;
+              break;
+            }
+          }
+
+          if (hasNewOrder && knownOrderIdsRef.current.size > 0 && soundEnabledRef.current) {
+            playChime();
+          }
+
+          knownOrderIdsRef.current = new Set(incomingOrders.map((o) => o.id));
+          setOrders(incomingOrders);
+        }
+
+        if (statsData?.success && statsData.stats) {
+          setStats(statsData.stats);
+        }
+      } catch {
+        // quiet sync poll
+      }
+    };
 
     const connectWs = () => {
       if (isDisposed) return;
+      // If WebSocket fails 2 times (e.g. serverless Netlify environment where WS is unsupported),
+      // switch fully to polling without noisy console reconnection loops
+      if (wsAttempts >= 2) {
+        if (!pollInterval) {
+          pollInterval = setInterval(performSyncPoll, 4000);
+          setAutoSyncActive(true);
+        }
+        return;
+      }
+
       try {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsUrl = `${protocol}//${window.location.host}/ws`;
@@ -153,6 +206,7 @@ export function OwnerDashboard({ onCloseDashboard, onLogout, theme = 'modern-lat
             try { ws.close(); } catch {}
             return;
           }
+          wsAttempts = 0;
           setWsConnected(true);
           try {
             ws.send(JSON.stringify({ type: 'IDENTIFY', role: 'owner', token: getAuthToken() }));
@@ -165,7 +219,7 @@ export function OwnerDashboard({ onCloseDashboard, onLogout, theme = 'modern-lat
           try {
             const data = JSON.parse(event.data);
             if (data.type === 'NEW_ORDER') {
-              // Deduplicate incoming order (Issue 6)
+              knownOrderIdsRef.current.add(data.payload.id);
               setOrders((prev) => {
                 if (prev.some((o) => o.id === data.payload.id)) return prev;
                 return [data.payload, ...prev];
@@ -211,19 +265,48 @@ export function OwnerDashboard({ onCloseDashboard, onLogout, theme = 'modern-lat
 
         ws.onclose = () => {
           setWsConnected(false);
+          wsAttempts++;
           if (!isDisposed) {
-            reconnectTimer = setTimeout(connectWs, 3000);
+            if (wsAttempts >= 2) {
+              if (!pollInterval) {
+                pollInterval = setInterval(performSyncPoll, 4000);
+                setAutoSyncActive(true);
+              }
+            } else {
+              reconnectTimer = setTimeout(connectWs, 3000);
+            }
           }
         };
-      } catch (err) {
-        console.warn('WS connect error:', err);
+
+        ws.onerror = () => {
+          if (!pollInterval) {
+            pollInterval = setInterval(performSyncPoll, 4000);
+            setAutoSyncActive(true);
+          }
+        };
+      } catch {
+        if (!pollInterval) {
+          pollInterval = setInterval(performSyncPoll, 4000);
+          setAutoSyncActive(true);
+        }
       }
     };
 
     connectWs();
+
+    // Fallback timer: start auto-sync polling if WS is still unestablished after 2 seconds
+    const fallbackTimer = setTimeout(() => {
+      if (!isDisposed && !wsConnected && !pollInterval) {
+        pollInterval = setInterval(performSyncPoll, 4000);
+        setAutoSyncActive(true);
+      }
+    }, 2000);
+
     return () => {
       isDisposed = true;
       if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (fallbackTimer) clearTimeout(fallbackTimer);
+      if (pollInterval) clearInterval(pollInterval);
       if (ws) {
         try { ws.close(); } catch {}
       }
@@ -537,11 +620,11 @@ export function OwnerDashboard({ onCloseDashboard, onLogout, theme = 'modern-lat
                   fontWeight: 700,
                   padding: '2px 8px',
                   borderRadius: 'var(--radius-full)',
-                  background: wsConnected ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                  color: wsConnected ? '#10b981' : '#ef4444'
+                  background: (wsConnected || autoSyncActive) ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                  color: (wsConnected || autoSyncActive) ? '#10b981' : '#ef4444'
                 }}
               >
-                {wsConnected ? '● Live WebSocket' : 'Connecting...'}
+                {wsConnected ? '● Live WebSocket' : autoSyncActive ? '● Live Auto-Sync' : 'Connecting...'}
               </span>
             </div>
             <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>

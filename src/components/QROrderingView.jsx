@@ -182,14 +182,41 @@ export function QROrderingView({
         .catch(() => {});
     }
 
+    // Auto-sync polling for active placed order (ensures seamless live updates on Netlify)
+    let orderPollTimer = null;
+    if (activePlacedOrder?.id && activePlacedOrder.status !== 'completed') {
+      const pollActiveOrder = async () => {
+        try {
+          const token = activePlacedOrder.tracking_token || localStorage.getItem('coffeestand_active_order_token') || '';
+          const url = token
+            ? `/api/orders/${encodeURIComponent(activePlacedOrder.id)}?token=${encodeURIComponent(token)}`
+            : `/api/orders/${encodeURIComponent(activePlacedOrder.id)}`;
+          const res = await fetch(url);
+          const data = await res.json();
+          if (data.success && data.order) {
+            setActivePlacedOrder((prev) => (prev ? { ...prev, ...data.order } : data.order));
+          }
+        } catch {
+          // ignore network hiccups
+        }
+      };
+      orderPollTimer = setInterval(pollActiveOrder, 4000);
+    }
+
     // Connect to WebSocket for instant bidirectional menu updates and order updates
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}/ws`;
     let ws;
+    let wsAttempts = 0;
 
     const connectWs = () => {
+      if (wsAttempts >= 2) return;
       try {
         ws = new WebSocket(wsUrl);
+
+        ws.onopen = () => {
+          wsAttempts = 0;
+        };
 
         ws.onmessage = (event) => {
           try {
@@ -225,19 +252,23 @@ export function QROrderingView({
         };
 
         ws.onclose = () => {
-          setTimeout(connectWs, 3000);
+          wsAttempts++;
+          if (wsAttempts < 2) {
+            setTimeout(connectWs, 3000);
+          }
         };
       } catch (err) {
-        console.warn('WS error in QR view:', err);
+        wsAttempts++;
       }
     };
 
     connectWs();
 
     return () => {
+      if (orderPollTimer) clearInterval(orderPollTimer);
       if (ws) ws.close();
     };
-  }, [activePlacedOrder?.id]);
+  }, [activePlacedOrder?.id, activePlacedOrder?.status]);
 
   // Filtered menu items
   const filteredItems = useMemo(() => {
@@ -575,7 +606,7 @@ export function QROrderingView({
                     Live Kitchen Tracker • {activePlacedOrder.table_number}
                   </span>
                   <span style={{ fontSize: '0.72rem', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', padding: '1px 8px', borderRadius: '4px', fontWeight: 700 }}>
-                    ⚡ Real-time WebSocket
+                    ⚡ Live Tracker
                   </span>
                 </div>
                 <h3 style={{ fontSize: '1.45rem', fontWeight: 900, color: 'var(--text-main)', marginTop: '3px', margin: 0 }}>
