@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Coffee, ShoppingBag, Search, Plus, Minus, Trash2,
   Clock, Check, MapPin, Tag, QrCode, Sparkles, CheckCircle2,
-  AlertCircle, CreditCard, ChevronRight, X, Sun, Moon, Info,
+  AlertCircle, CreditCard, ChevronRight, ArrowRight, X, Sun, Moon, Info,
   Smartphone, ShieldCheck, HeartHandshake, Utensils, Star, MessageSquare,
   Flame, Bell, Hourglass
 } from 'lucide-react';
