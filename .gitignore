@@ -1,3 +1,8 @@
+node_modules/
+dist/
+.env
+.env.*
+
 # Database temporary journals
 *.db-shm
 *.db-wal
