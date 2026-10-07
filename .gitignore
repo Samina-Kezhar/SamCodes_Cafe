@@ -1,9 +1,3 @@
-# Dependencies
-node_modules/
-
-# Production build (served by Express)
-# dist/ is tracked to allow immediate deployment
-
 # Database temporary journals
 *.db-shm
 *.db-wal
