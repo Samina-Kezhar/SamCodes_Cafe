@@ -166,37 +166,17 @@ export function CustomerMenuSection({ menuItems = [], onAddToCart }) {
                   items={categoryItems}
                   onCardClick={(item) => setViewingDetailItem(item)}
                   renderCardAction={(item) => (
-                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setViewingDetailItem(item);
-                        }}
-                        className="btn btn-secondary"
-                        style={{ padding: '0.45rem 0.8rem', fontSize: '0.8rem', gap: '5px' }}
-                      >
-                        <Info size={13} style={{ color: 'var(--primary)' }} />
-                        <span>Profile</span>
-                      </button>
-                      {onAddToCart && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onAddToCart({
-                              ...item,
-                              quantity: 1,
-                              size: 'Regular',
-                              price: Number(item.price) || 0,
-                              customizations: []
-                            });
-                          }}
-                          className="btn btn-primary"
-                          style={{ padding: '0.45rem 0.85rem', fontSize: '0.8rem', gap: '4px' }}
-                        >
-                          <span>+ Order</span>
-                        </button>
-                      )}
-                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setViewingDetailItem(item);
+                      }}
+                      className="btn btn-secondary"
+                      style={{ padding: '0.45rem 0.85rem', fontSize: '0.8rem', gap: '5px' }}
+                    >
+                      <Info size={13} style={{ color: 'var(--primary)' }} />
+                      <span>Flavor Profile</span>
+                    </button>
                   )}
                 />
               );
@@ -286,32 +266,14 @@ export function CustomerMenuSection({ menuItems = [], onAddToCart }) {
               )}
             </div>
 
-            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
               <button
                 onClick={() => setViewingDetailItem(null)}
                 className="btn btn-secondary"
-                style={{ padding: '0.5rem 1.4rem', fontSize: '0.88rem' }}
+                style={{ padding: '0.5rem 1.6rem', fontSize: '0.88rem' }}
               >
                 Close
               </button>
-              {onAddToCart && (
-                <button
-                  onClick={() => {
-                    onAddToCart({
-                      ...viewingDetailItem,
-                      quantity: 1,
-                      size: 'Regular',
-                      price: Number(viewingDetailItem.price) || 0,
-                      customizations: []
-                    });
-                    setViewingDetailItem(null);
-                  }}
-                  className="btn btn-primary"
-                  style={{ padding: '0.5rem 1.4rem', fontSize: '0.88rem' }}
-                >
-                  Add to Order • ₹{viewingDetailItem.price}
-                </button>
-              )}
             </div>
           </div>
         </div>

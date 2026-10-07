@@ -21,14 +21,54 @@ export function ContactSection() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setSubmitting(true);
     setErrorMessage('');
+
+    // Client-side validation
+    const trimmedName = formData.name.trim();
+    if (trimmedName.length < 2) {
+      setErrorMessage('Please enter your full name (minimum 2 characters).');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email.trim())) {
+      setErrorMessage('Please enter a valid email address.');
+      return;
+    }
+
+    const phoneDigits = formData.phone.replace(/\D/g, '');
+    if (phoneDigits.length < 10) {
+      setErrorMessage('Please enter a valid 10-digit phone number.');
+      return;
+    }
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (formData.inquiry_type !== 'general') {
+      if (!formData.preferred_date) {
+        setErrorMessage('Please choose a preferred reservation date.');
+        return;
+      }
+      if (formData.preferred_date < todayStr) {
+        setErrorMessage('Reservation date cannot be in the past. Please select today or a future date.');
+        return;
+      }
+      if (!formData.preferred_time) {
+        setErrorMessage('Please choose a preferred reservation time.');
+        return;
+      }
+    }
+
+    setSubmitting(true);
 
     try {
       const res = await fetch('/api/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          ...formData,
+          name: trimmedName,
+          email: formData.email.trim()
+        })
       });
       const data = await res.json();
       if (!data.success) {
@@ -252,6 +292,7 @@ export function ContactSection() {
                       </label>
                       <input
                         type="date"
+                        min={new Date().toISOString().split('T')[0]}
                         value={formData.preferred_date}
                         onChange={(e) => setFormData({ ...formData, preferred_date: e.target.value })}
                         style={{
@@ -291,14 +332,13 @@ export function ContactSection() {
                 {/* Notes */}
                 <div>
                   <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.3rem' }}>
-                    Notes or Seating Preferences (Indoor AC / Patio)
+                    Notes or Seating Preferences (Optional — Indoor AC / Patio)
                   </label>
                   <textarea
                     rows={3}
                     placeholder="Tell us about seating preferences (indoor/outdoor patio), celebrations, or dietary requirements..."
                     value={formData.message}
                     onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                    required
                     style={{
                       width: '100%',
                       padding: '0.65rem 0.9rem',

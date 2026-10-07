@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Menu as MenuIcon, X, Sparkles, Utensils, Image,
-  Film, Info, PhoneCall, Sun, Moon, Star, ShoppingBag, QrCode
+  Film, Info, PhoneCall, Sun, Moon, Star, ShoppingBag
 } from 'lucide-react';
 import { CafenaLogoStamp } from './CafenaDecorations';
 
@@ -9,8 +9,7 @@ export function Navbar({
   theme = 'warm-cream',
   onToggleTheme,
   onOpenCart,
-  cartCount = 0,
-  onOpenQR
+  cartCount = 0
 }) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -32,7 +31,7 @@ export function Navbar({
     const handleScroll = () => {
       setScrolled(window.scrollY > 30);
 
-      const sections = ['hero', 'menu', 'offers', 'gallery', 'videos', 'about', 'reviews', 'contact'];
+      const sections = ['hero', 'menu', 'gallery', 'videos', 'about', 'reviews', 'contact'];
       const scrollPos = window.scrollY + 130;
       for (const sectionId of sections) {
         const el = document.getElementById(sectionId);
@@ -60,7 +59,6 @@ export function Navbar({
   const navLinks = [
     { id: 'hero', label: 'Home' },
     { id: 'menu', label: 'Menu' },
-    { id: 'offers', label: 'Offers' },
     { id: 'gallery', label: 'Gallery' },
     { id: 'videos', label: 'Reels' },
     { id: 'about', label: 'Our Story' },
@@ -115,27 +113,6 @@ export function Navbar({
 
         {/* Right Action Controls */}
         <div className="nav-actions">
-          {/* Table QR Standee button */}
-          {onOpenQR && (
-            <button
-              onClick={onOpenQR}
-              className="btn-icon"
-              aria-label="Table QR Standee"
-              title="View Table QR Standee"
-              style={{
-                width: '44px',
-                height: '44px',
-                background: 'var(--bg-surface-elevated)',
-                borderColor: 'var(--border-medium)',
-                color: 'var(--text-main)',
-                borderRadius: '50%',
-                cursor: 'pointer'
-              }}
-            >
-              <QrCode size={19} style={{ color: 'var(--primary)' }} />
-            </button>
-          )}
-
           {/* Cart Drawer Trigger button (U01) */}
           {onOpenCart && (
             <button

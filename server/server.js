@@ -1194,13 +1194,47 @@ app.post('/api/contact', contactLimiter, (req, res) => {
     const cleanName = sanitizeText(name, 80);
     const cleanEmail = sanitizeText(email, 120);
     const cleanPhone = sanitizeText(phone, 25);
-    const cleanMsg = sanitizeText(message, 1000);
+    let cleanMsg = sanitizeText(message, 1000);
 
-    if (!cleanName || !cleanEmail || !cleanMsg) {
-      return res.status(400).json({ success: false, error: 'Name, email, and message are required' });
+    if (!cleanName || cleanName.length < 2) {
+      return res.status(400).json({ success: false, error: 'Valid name (minimum 2 characters) is required' });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!cleanEmail || !emailRegex.test(cleanEmail)) {
+      return res.status(400).json({ success: false, error: 'Valid email address is required' });
+    }
+
+    const phoneDigits = cleanPhone.replace(/\D/g, '');
+    if (!cleanPhone || phoneDigits.length < 7) {
+      return res.status(400).json({ success: false, error: 'Valid contact phone number is required' });
     }
 
     const cleanPartySize = Math.min(20, Math.max(1, parseInt(party_size || 2, 10)));
+    const cleanInquiryType = sanitizeText(inquiry_type, 50) || 'table_reservation';
+    const cleanDate = sanitizeText(preferred_date, 20);
+    const cleanTime = sanitizeText(preferred_time, 20);
+
+    // Validate date & time for table reservations and events
+    if (cleanInquiryType === 'table_reservation' || cleanInquiryType === 'private_event') {
+      if (!cleanDate) {
+        return res.status(400).json({ success: false, error: 'Preferred reservation date is required' });
+      }
+      const todayStr = new Date().toISOString().slice(0, 10);
+      if (cleanDate < todayStr) {
+        return res.status(400).json({ success: false, error: 'Reservation date cannot be in the past' });
+      }
+      if (!cleanTime) {
+        return res.status(400).json({ success: false, error: 'Preferred reservation time is required' });
+      }
+    }
+
+    if (!cleanMsg) {
+      cleanMsg = cleanInquiryType === 'table_reservation'
+        ? `Table reservation for ${cleanPartySize} guest(s) on ${cleanDate || 'today'} at ${cleanTime || 'requested time'}`
+        : `General inquiry regarding ${cleanInquiryType}`;
+    }
+
     const now = new Date().toISOString();
 
     const insert = db.prepare(`
@@ -1212,11 +1246,11 @@ app.post('/api/contact', contactLimiter, (req, res) => {
       cleanName,
       cleanEmail,
       cleanPhone,
-      sanitizeText(inquiry_type, 50) || 'general',
+      cleanInquiryType,
       cleanMsg,
       cleanPartySize,
-      sanitizeText(preferred_date, 20),
-      sanitizeText(preferred_time, 20),
+      cleanDate,
+      cleanTime,
       now
     );
 
@@ -1225,11 +1259,11 @@ app.post('/api/contact', contactLimiter, (req, res) => {
       name: cleanName,
       email: cleanEmail,
       phone: cleanPhone,
-      inquiry_type: sanitizeText(inquiry_type, 50),
+      inquiry_type: cleanInquiryType,
       message: cleanMsg,
       party_size: cleanPartySize,
-      preferred_date,
-      preferred_time,
+      preferred_date: cleanDate,
+      preferred_time: cleanTime,
       status: 'unread',
       created_at: now
     };
@@ -1248,8 +1282,8 @@ app.patch('/api/contact/:id/status', requireOwnerAuth, (req, res) => {
     const { id } = req.params;
     const { status = 'confirmed' } = req.body;
 
-    // Strict status enum validation (F09)
-    const validStatuses = new Set(['unread', 'confirmed', 'declined', 'completed']);
+    // Strict status enum validation including seated (F09)
+    const validStatuses = new Set(['unread', 'confirmed', 'declined', 'completed', 'seated']);
     if (!validStatuses.has(status)) {
       return res.status(400).json({ success: false, error: `Invalid status. Must be one of: ${[...validStatuses].join(', ')}` });
     }

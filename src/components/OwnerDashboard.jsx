@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
-  LayoutDashboard, Coffee, Clock, DollarSign, CheckCircle, AlertCircle,
-  Volume2, VolumeX, Printer, RefreshCw, Search, QrCode, Utensils,
+  LayoutDashboard, Coffee, DollarSign, CheckCircle, AlertCircle,
+  Printer, Search, QrCode, Utensils,
   X, Sparkles,
   Package, TrendingUp, Tag, Users, Star, Plus, Trash2, Edit3, LogOut, Download,
   Sun, Moon
@@ -552,28 +552,6 @@ export function OwnerDashboard({ onCloseDashboard, onLogout, theme = 'modern-lat
 
         {/* Right Action Controls */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {/* Sound Alert Toggle */}
-          <button
-            onClick={() => setSoundEnabled(!soundEnabled)}
-            className="btn btn-secondary"
-            style={{ padding: '0.45rem 0.85rem', fontSize: '0.82rem', gap: '6px' }}
-            title={soundEnabled ? 'Order sound alert is on' : 'Order sound alert is muted'}
-          >
-            {soundEnabled ? <Volume2 size={16} style={{ color: '#10b981' }} /> : <VolumeX size={16} />}
-            <span className="hide-on-mobile">{soundEnabled ? 'Chime ON' : 'Muted'}</span>
-          </button>
-
-          {/* Refresh Data */}
-          <button
-            onClick={fetchData}
-            className="btn btn-secondary"
-            style={{ padding: '0.45rem 0.85rem', fontSize: '0.82rem', gap: '6px' }}
-            title="Refresh dashboard data"
-          >
-            <RefreshCw size={15} className={loading ? 'spin' : ''} />
-            <span className="hide-on-mobile">Sync</span>
-          </button>
-
           {/* Theme Toggle */}
           {onToggleTheme && (
             <button

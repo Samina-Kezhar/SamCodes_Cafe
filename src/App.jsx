@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { Hero3D } from './components/Hero3D';
 import { CustomerMenuSection } from './components/CustomerMenuSection';
-import { OffersSection } from './components/OffersSection';
 import { ReviewsSection } from './components/ReviewsSection';
 import { GallerySection } from './components/GallerySection';
 import { VideosSection } from './components/VideosSection';
@@ -336,7 +335,6 @@ export function App() {
             onToggleTheme={toggleTheme}
             onOpenCart={() => setIsCartOpen(true)}
             cartCount={totalCartCount}
-            onOpenQR={() => setIsQRModalOpen(true)}
           />
 
           <main>
@@ -355,13 +353,6 @@ export function App() {
             {/* 2. Interactive Menu Carousel Organized by Dish Types */}
             <CustomerMenuSection
               menuItems={menuItems}
-              onAddToCart={handleAddToCart}
-            />
-
-            {/* 3. Special Offers & Deals (U01, U05) */}
-            <OffersSection
-              offers={offers}
-              onApplyOffer={handleApplyOffer}
             />
 
             {/* 4. Photo Gallery */}
