@@ -16,13 +16,14 @@ export function CartDrawer({
   onRemoveItem,
   onClearCart,
   activeTable,
-  onOrderPlaced
+  onOrderPlaced,
+  initialCoupon
 }) {
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [tableNumber, setTableNumber] = useState(activeTable || 'Table 4');
   const [orderType, setOrderType] = useState('dine_in');
-  const [couponCode, setCouponCode] = useState('');
+  const [couponCode, setCouponCode] = useState(initialCoupon || '');
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [couponError, setCouponError] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('upi');
@@ -30,19 +31,64 @@ export function CartDrawer({
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
 
-  if (!isOpen) return null;
-
-  // Calculate pricing
-  const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  // Calculate pricing safely (Issue 4)
+  const subtotal = cartItems.reduce(
+    (sum, item) => sum + ((Number(item.price) || 0) * (Number(item.quantity) || 1)),
+    0
+  );
   const tax = Math.round(subtotal * 0.05 * 100) / 100; // 5% GST
   let discount = 0;
 
-  if (appliedCoupon) {
+  // Re-verify coupon eligibility when subtotal changes (Issue 13)
+  useEffect(() => {
+    if (appliedCoupon) {
+      if (cartItems.length === 0 || subtotal < (appliedCoupon.min_order || 0)) {
+        const prevCode = appliedCoupon.code;
+        const prevMin = appliedCoupon.min_order;
+        setAppliedCoupon(null);
+        if (cartItems.length > 0) {
+          setCouponError(`Coupon ${prevCode} removed: subtotal is below ₹${prevMin}`);
+        }
+      }
+    }
+  }, [subtotal, cartItems.length, appliedCoupon]);
+
+  // Support Claim Deal coupon from OffersSection (Issue 14)
+  useEffect(() => {
+    if (initialCoupon) {
+      setCouponCode(initialCoupon);
+      const validateInitial = async () => {
+        try {
+          const res = await fetch('/api/offers');
+          const data = await res.json();
+          if (data.success && data.offers) {
+            const found = data.offers.find((o) => o.code === initialCoupon);
+            if (found) {
+              if (subtotal >= (found.min_order || 0) && cartItems.length > 0) {
+                setAppliedCoupon(found);
+                setCouponError('');
+              } else if (cartItems.length > 0) {
+                setCouponError(`Min order ₹${found.min_order} required for ${found.code}`);
+              } else {
+                setCouponError(`Add items (min ₹${found.min_order}) to activate ${found.code}`);
+              }
+            }
+          }
+        } catch {
+          // ignore
+        }
+      };
+      validateInitial();
+    }
+  }, [initialCoupon, isOpen]);
+
+  if (appliedCoupon && subtotal >= (appliedCoupon.min_order || 0) && cartItems.length > 0) {
     if (appliedCoupon.discount_percent > 0) {
       discount = Math.round((subtotal * appliedCoupon.discount_percent) / 100);
     } else if (appliedCoupon.discount_amount > 0) {
       discount = appliedCoupon.discount_amount;
     }
+    discount = Math.min(subtotal, Math.max(0, discount));
   }
 
   const grandTotal = Math.max(0, Math.round((subtotal + tax - discount) * 100) / 100);
@@ -131,10 +177,12 @@ export function CartDrawer({
     }
   };
 
+  if (!isOpen) return null;
+
   return (
     <>
       <div className="cart-drawer-backdrop" onClick={onClose} />
-      <div className="cart-drawer">
+      <div className="cart-drawer" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="cart-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>

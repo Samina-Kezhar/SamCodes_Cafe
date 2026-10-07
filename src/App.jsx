@@ -40,6 +40,7 @@ export function App() {
   const [isQRModalOpen, setIsQRModalOpen] = useState(false);
   const [isTrackingModalOpen, setIsTrackingModalOpen] = useState(false);
   const [trackedOrder, setTrackedOrder] = useState(null);
+  const [selectedCoupon, setSelectedCoupon] = useState('');
 
   // Unified Cart State (U01, U02)
   const [cartItems, setCartItems] = useState(() => {
@@ -76,13 +77,23 @@ export function App() {
   }, []);
 
   const handleAddToCart = (newItem) => {
+    const cleanItem = {
+      ...newItem,
+      quantity: Number(newItem.quantity) || 1,
+      price: Number(newItem.price) || 0,
+      size: newItem.size || 'Regular',
+      customizations: Array.isArray(newItem.customizations)
+        ? newItem.customizations
+        : (newItem.customizations ? [newItem.customizations] : [])
+    };
+
     setCartItems((prev) => {
       const existingIndex = prev.findIndex((item) => {
-        if (item.id !== newItem.id) return false;
-        if ((item.size || '') !== (newItem.size || '')) return false;
-        if ((item.milk || '') !== (newItem.milk || '')) return false;
+        if (item.id !== cleanItem.id) return false;
+        if ((item.size || '') !== (cleanItem.size || '')) return false;
+        if ((item.milk || '') !== (cleanItem.milk || '')) return false;
         const addonsA = (item.addons || []).map(a => typeof a === 'string' ? a : a.name).sort().join(',');
-        const addonsB = (newItem.addons || []).map(a => typeof a === 'string' ? a : a.name).sort().join(',');
+        const addonsB = (cleanItem.addons || []).map(a => typeof a === 'string' ? a : a.name).sort().join(',');
         return addonsA === addonsB;
       });
 
@@ -90,11 +101,11 @@ export function App() {
         const updated = [...prev];
         updated[existingIndex] = {
           ...updated[existingIndex],
-          quantity: updated[existingIndex].quantity + (newItem.quantity || 1)
+          quantity: (Number(updated[existingIndex].quantity) || 1) + cleanItem.quantity
         };
         return updated;
       }
-      return [...prev, newItem];
+      return [...prev, cleanItem];
     });
   };
 
@@ -280,6 +291,7 @@ export function App() {
   };
 
   const handleApplyOffer = (code) => {
+    setSelectedCoupon(code);
     setIsCartOpen(true);
   };
 
@@ -380,6 +392,7 @@ export function App() {
             onRemoveItem={handleRemoveItem}
             onClearCart={handleClearCart}
             activeTable={activeTable}
+            initialCoupon={selectedCoupon}
             onOrderPlaced={(order) => {
               setTrackedOrder(order);
               setIsTrackingModalOpen(true);

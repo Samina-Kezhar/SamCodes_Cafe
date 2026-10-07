@@ -1299,11 +1299,14 @@ textarea:focus {
   background: var(--bg-overlay);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  display: flex;
-  justify-content: flex-end;
 }
 
 .cart-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 260;
   background: var(--bg-surface);
   width: 100%;
   max-width: 440px;

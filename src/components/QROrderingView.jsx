@@ -440,30 +440,30 @@ export function QROrderingView({
           alignItems: 'center'
         }}
       >
-        <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
           {/* Café Brand & Contactless Badge */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <CafenaLogoStamp size={42} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flexShrink: 1 }}>
+            <CafenaLogoStamp size={38} />
             <div style={{ lineHeight: 1.15 }}>
-              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: '1.45rem', color: 'var(--text-main)', letterSpacing: '0.04em' }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: '1.3rem', color: 'var(--text-main)', letterSpacing: '0.04em' }}>
                 CAFENA
               </div>
-              <div style={{ fontSize: '0.74rem', color: 'var(--primary)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                Contactless Table Ordering
+              <div style={{ fontSize: '0.68rem', color: 'var(--primary)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                QR Table Menu
               </div>
             </div>
           </div>
 
           {/* Right Controls: Table Badge, Theme & Cart */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexShrink: 0 }}>
             {/* Table Badge */}
             <button
               onClick={() => setIsSwitchTableOpen(true)}
               className="btn btn-secondary"
               style={{
-                padding: '0.45rem 0.95rem',
-                fontSize: '0.84rem',
-                gap: '6px',
+                padding: '0.4rem 0.65rem',
+                fontSize: '0.8rem',
+                gap: '4px',
                 borderColor: 'var(--primary)',
                 background: 'var(--primary-subtle)',
                 color: 'var(--primary)',
@@ -471,47 +471,29 @@ export function QROrderingView({
               }}
               title="Click to switch table number"
             >
-              <MapPin size={15} />
+              <MapPin size={14} />
               <span>{activeTable}</span>
-              <span style={{ fontSize: '0.72rem', opacity: 0.7 }}>(Change)</span>
             </button>
 
             {/* Theme Toggle */}
             <button
               onClick={onToggleTheme}
               className="btn-icon"
-              style={{ width: '40px', height: '40px', background: 'var(--bg-surface-elevated)' }}
+              style={{ width: '36px', height: '36px', background: 'var(--bg-surface-elevated)' }}
               title="Toggle Day/Evening Theme"
             >
-              {theme === 'warm-cream' ? <Moon size={18} style={{ color: 'var(--primary)' }} /> : <Sun size={18} style={{ color: 'var(--accent-gold)' }} />}
+              {theme === 'warm-cream' ? <Moon size={16} style={{ color: 'var(--primary)' }} /> : <Sun size={16} style={{ color: 'var(--accent-gold)' }} />}
             </button>
 
-            {/* Floating Cart Button */}
+            {/* Cart Button */}
             <button
               onClick={() => setIsCartOpen(true)}
               className="btn btn-primary"
-              style={{ padding: '0.5rem 1.1rem', fontSize: '0.88rem', gap: '8px', position: 'relative' }}
+              style={{ padding: '0.45rem 0.85rem', fontSize: '0.82rem', gap: '6px', position: 'relative' }}
+              title="View your cart"
             >
-              <ShoppingBag size={17} />
+              <ShoppingBag size={16} />
               <span>Cart ({totalCartCount})</span>
-              {totalCartCount > 0 && (
-                <span
-                  style={{
-                    background: '#fff',
-                    color: 'var(--primary)',
-                    borderRadius: '50%',
-                    width: '20px',
-                    height: '20px',
-                    fontSize: '0.75rem',
-                    fontWeight: 800,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                >
-                  {totalCartCount}
-                </span>
-              )}
             </button>
           </div>
         </div>
@@ -1483,6 +1465,62 @@ export function QROrderingView({
                 <span>{submittingOrder ? 'Verifying & Placing...' : `I Have Paid • Place My Order (₹${grandTotal.toFixed(2)})`}</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Bottom Cart Bar for Mobile View (Issue 7) */}
+      {totalCartCount > 0 && !isCartOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '16px',
+            left: '16px',
+            right: '16px',
+            zIndex: 100,
+            background: 'linear-gradient(135deg, var(--primary), var(--accent-caramel))',
+            color: '#fff',
+            borderRadius: 'var(--radius-md)',
+            boxShadow: '0 8px 30px rgba(0, 0, 0, 0.35)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '0.85rem 1.2rem',
+            cursor: 'pointer'
+          }}
+          onClick={() => setIsCartOpen(true)}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ position: 'relative' }}>
+              <ShoppingBag size={22} />
+              <span
+                style={{
+                  position: 'absolute',
+                  top: '-6px',
+                  right: '-8px',
+                  background: '#fff',
+                  color: 'var(--primary)',
+                  borderRadius: '50%',
+                  width: '18px',
+                  height: '18px',
+                  fontSize: '0.72rem',
+                  fontWeight: 900,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                {totalCartCount}
+              </span>
+            </div>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: '0.95rem' }}>View Order Cart</div>
+              <div style={{ fontSize: '0.74rem', opacity: 0.9 }}>{activeTable} • ₹{subtotal}</div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800, fontSize: '0.88rem' }}>
+            <span>Checkout</span>
+            <ArrowRight size={16} />
           </div>
         </div>
       )}

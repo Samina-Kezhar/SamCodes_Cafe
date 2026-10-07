@@ -28,7 +28,7 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 // ----------------------------------------------------
 // SECURITY & AUTH CONFIGURATION (S01, S02, S03)
 // ----------------------------------------------------
-const OWNER_SECRET = process.env.OWNER_AUTH_SECRET || 'cafena-nikol-master-auth-secret-2026';
+const OWNER_SECRET = process.env.OWNER_AUTH_SECRET || crypto.randomBytes(32).toString('hex');
 const OWNER_PIN = process.env.OWNER_PIN || '8899';
 
 export function generateOwnerToken() {
@@ -896,6 +896,14 @@ app.post('/api/orders', orderLimiter, (req, res) => {
       const itemTotal = effectiveUnitPrice * qty;
       subtotal += itemTotal;
 
+      // Normalize customizations to array (Issue 2)
+      let normalizedCustomizations = [];
+      if (Array.isArray(item.customizations)) {
+        normalizedCustomizations = item.customizations.map((c) => String(c).trim()).filter(Boolean);
+      } else if (typeof item.customizations === 'string' && item.customizations.trim()) {
+        normalizedCustomizations = [item.customizations.trim()];
+      }
+
       validatedItems.push({
         id: dbItem.id,
         name: dbItem.name,
@@ -908,19 +916,38 @@ app.post('/api/orders', orderLimiter, (req, res) => {
         milkPrice: milkExtra,
         addons: validAddons,
         addonsPrice: addonsTotal,
-        customizations: item.customizations || [],
+        customizations: normalizedCustomizations,
+        kitchenNotes: sanitizeText(item.kitchenNotes || item.kitchen_notes || '', 200),
         prep_time_mins: dbItem.prep_time_mins || 8,
         itemTotal
       });
 
-      // Prepare inventory deduction estimates (F06)
-      if (dbItem.category.includes('coffee') || dbItem.category.includes('frappes')) {
+      // Prepare inventory deduction estimates with substitutions (Issue 11)
+      if (dbItem.category.includes('coffee') || dbItem.category.includes('frappes') || dbItem.category.includes('cold_brews')) {
         inventoryDeductions.push({ id: 'inv-01', qty: 0.02 * qty }); // ~20g beans
-        inventoryDeductions.push({ id: 'inv-02', qty: 0.25 * qty }); // ~250ml milk
+        const isOatMilk = selectedMilkName && selectedMilkName.toLowerCase().includes('oat');
+        if (isOatMilk) {
+          inventoryDeductions.push({ id: 'inv-03', qty: 0.25 * qty }); // Oat milk
+        } else if (selectedMilkName !== 'None' && selectedMilkName !== 'Black') {
+          inventoryDeductions.push({ id: 'inv-02', qty: 0.25 * qty }); // Dairy milk
+        }
       }
       if (dbItem.category.includes('sandwiches')) {
         inventoryDeductions.push({ id: 'inv-06', qty: 1 * qty }); // 1 panini loaf
         inventoryDeductions.push({ id: 'inv-07', qty: 0.1 * qty }); // 100g paneer
+      }
+      const itemNameLower = (dbItem.name || '').toLowerCase();
+      if (itemNameLower.includes('biscoff')) {
+        inventoryDeductions.push({ id: 'inv-04', qty: 0.03 * qty }); // Biscoff
+      }
+      if (itemNameLower.includes('nutella') || itemNameLower.includes('hazelnut')) {
+        inventoryDeductions.push({ id: 'inv-05', qty: 0.03 * qty }); // Nutella
+      }
+      if (itemNameLower.includes('waffle') || itemNameLower.includes('brownie') || itemNameLower.includes('chocolate')) {
+        inventoryDeductions.push({ id: 'inv-08', qty: 0.04 * qty }); // Chocolate ganache
+      }
+      if (itemNameLower.includes('gelato') || itemNameLower.includes('ice cream')) {
+        inventoryDeductions.push({ id: 'inv-09', qty: 0.05 * qty }); // Gelato
       }
     }
 
@@ -1240,7 +1267,8 @@ app.patch('/api/contact/:id/status', requireOwnerAuth, (req, res) => {
 // ----------------------------------------------------
 app.get('/api/dashboard/stats', requireOwnerAuth, (req, res) => {
   try {
-    // Single consolidated SQLite aggregate query (F14)
+    // Single consolidated SQLite aggregate query with accurate Today Revenue (F14, Issue 12)
+    const todayStart = new Date().toISOString().slice(0, 10);
     const aggregatedStats = db.prepare(`
       SELECT 
         COUNT(*) as totalOrders,
@@ -1250,9 +1278,10 @@ app.get('/api/dashboard/stats', requireOwnerAuth, (req, res) => {
         SUM(CASE WHEN status = 'brewing' THEN 1 ELSE 0 END) as countBrewing,
         SUM(CASE WHEN status = 'ready' THEN 1 ELSE 0 END) as countReady,
         SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as countCancelled,
-        SUM(CASE WHEN status != 'cancelled' THEN total ELSE 0 END) as totalRevenue
+        SUM(CASE WHEN created_at >= ? AND payment_status = 'paid' AND status != 'cancelled' THEN total ELSE 0 END) as todayRevenue,
+        SUM(CASE WHEN payment_status = 'paid' AND status != 'cancelled' THEN total ELSE 0 END) as totalRevenue
       FROM orders
-    `).get();
+    `).get(todayStart);
 
     const lowStockCount = db.prepare('SELECT COUNT(*) as count FROM inventory WHERE current_stock <= min_threshold').get().count;
 
@@ -1262,6 +1291,7 @@ app.get('/api/dashboard/stats', requireOwnerAuth, (req, res) => {
         totalOrders: aggregatedStats.totalOrders || 0,
         activeOrders: aggregatedStats.activeOrders || 0,
         completedOrders: aggregatedStats.completedOrders || 0,
+        todayRevenue: Math.round((aggregatedStats.todayRevenue || 0) * 100) / 100,
         totalRevenue: Math.round((aggregatedStats.totalRevenue || 0) * 100) / 100,
         breakdown: {
           received: aggregatedStats.countReceived || 0,

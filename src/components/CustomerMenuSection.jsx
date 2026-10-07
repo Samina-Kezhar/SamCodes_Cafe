@@ -182,7 +182,13 @@ export function CustomerMenuSection({ menuItems = [], onAddToCart }) {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            onAddToCart(item);
+                            onAddToCart({
+                              ...item,
+                              quantity: 1,
+                              size: 'Regular',
+                              price: Number(item.price) || 0,
+                              customizations: []
+                            });
                           }}
                           className="btn btn-primary"
                           style={{ padding: '0.45rem 0.85rem', fontSize: '0.8rem', gap: '4px' }}
@@ -291,7 +297,13 @@ export function CustomerMenuSection({ menuItems = [], onAddToCart }) {
               {onAddToCart && (
                 <button
                   onClick={() => {
-                    onAddToCart(viewingDetailItem);
+                    onAddToCart({
+                      ...viewingDetailItem,
+                      quantity: 1,
+                      size: 'Regular',
+                      price: Number(viewingDetailItem.price) || 0,
+                      customizations: []
+                    });
                     setViewingDetailItem(null);
                   }}
                   className="btn btn-primary"

@@ -131,12 +131,6 @@ export function initDatabase() {
         JSON.stringify(item.customizable || {})
       );
     }
-  } else {
-    // Update existing menu items with accurate matching photos & updated Cafena names
-    const updatePhoto = db.prepare(`UPDATE menu_items SET name = ?, image = ?, customizable_json = ? WHERE id = ?`);
-    for (const item of initialMenuItems) {
-      updatePhoto.run(item.name, item.image, JSON.stringify(item.customizable || {}), item.id);
-    }
   }
 
   // Ensure estimated_prep_mins column exists in orders

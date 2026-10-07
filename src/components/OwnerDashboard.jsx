@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   LayoutDashboard, Coffee, Clock, DollarSign, CheckCircle, AlertCircle,
-  Volume2, VolumeX, Printer, RefreshCw, Search, Filter, QrCode, Utensils,
-  ChevronRight, Phone, MapPin, Eye, X, Check, ArrowRight, Sparkles, MessageSquare,
-  Package, TrendingUp, Tag, Users, Star, Plus, Trash2, Edit3, ShieldCheck, LogOut, Download,
+  Volume2, VolumeX, Printer, RefreshCw, Search, QrCode, Utensils,
+  X, Sparkles,
+  Package, TrendingUp, Tag, Users, Star, Plus, Trash2, Edit3, LogOut, Download,
   Sun, Moon
 } from 'lucide-react';
 import { playChime } from '../utils/audioAlert.js';
@@ -127,16 +127,32 @@ export function OwnerDashboard({ onCloseDashboard, onLogout, theme = 'modern-lat
 
   useEffect(() => {
     fetchData();
+  }, []);
 
-    // Setup WebSocket connection
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws`;
-    let ws;
+  // Keep soundEnabled in a ref to avoid reconnecting WebSocket on sound toggle (Issue 6)
+  const soundEnabledRef = useRef(soundEnabled);
+  useEffect(() => {
+    soundEnabledRef.current = soundEnabled;
+  }, [soundEnabled]);
+
+  // WebSocket real-time updates for owner
+  useEffect(() => {
+    let ws = null;
+    let reconnectTimer = null;
+    let isDisposed = false;
 
     const connectWs = () => {
+      if (isDisposed) return;
       try {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/ws`;
         ws = new WebSocket(wsUrl);
+
         ws.onopen = () => {
+          if (isDisposed) {
+            try { ws.close(); } catch {}
+            return;
+          }
           setWsConnected(true);
           try {
             ws.send(JSON.stringify({ type: 'IDENTIFY', role: 'owner', token: getAuthToken() }));
@@ -149,13 +165,18 @@ export function OwnerDashboard({ onCloseDashboard, onLogout, theme = 'modern-lat
           try {
             const data = JSON.parse(event.data);
             if (data.type === 'NEW_ORDER') {
-              setOrders((prev) => [data.payload, ...prev]);
-              if (soundEnabled) playChime();
+              // Deduplicate incoming order (Issue 6)
+              setOrders((prev) => {
+                if (prev.some((o) => o.id === data.payload.id)) return prev;
+                return [data.payload, ...prev];
+              });
+              if (soundEnabledRef.current) playChime();
               setStats((prev) => ({
                 ...prev,
                 totalOrders: prev.totalOrders + 1,
                 activeOrders: prev.activeOrders + 1,
-                totalRevenue: prev.totalRevenue + (data.payload.total || 0),
+                todayRevenue: prev.todayRevenue + (data.payload.payment_status === 'paid' ? (data.payload.total || 0) : 0),
+                totalRevenue: prev.totalRevenue + (data.payload.payment_status === 'paid' ? (data.payload.total || 0) : 0),
                 breakdown: {
                   ...prev.breakdown,
                   received: (prev.breakdown?.received || 0) + 1
@@ -163,7 +184,7 @@ export function OwnerDashboard({ onCloseDashboard, onLogout, theme = 'modern-lat
               }));
             } else if (data.type === 'ORDER_UPDATED') {
               setOrders((prev) =>
-                prev.map((o) => (o.id === data.payload.id ? data.payload : o))
+                prev.map((o) => (o.id === data.payload.id ? { ...o, ...data.payload } : o))
               );
             } else if (data.type === 'MENU_STOCK_CHANGED') {
               setMenuItems((prev) =>
@@ -190,7 +211,9 @@ export function OwnerDashboard({ onCloseDashboard, onLogout, theme = 'modern-lat
 
         ws.onclose = () => {
           setWsConnected(false);
-          setTimeout(connectWs, 3000);
+          if (!isDisposed) {
+            reconnectTimer = setTimeout(connectWs, 3000);
+          }
         };
       } catch (err) {
         console.warn('WS connect error:', err);
@@ -199,9 +222,13 @@ export function OwnerDashboard({ onCloseDashboard, onLogout, theme = 'modern-lat
 
     connectWs();
     return () => {
-      if (ws) ws.close();
+      isDisposed = true;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (ws) {
+        try { ws.close(); } catch {}
+      }
     };
-  }, [soundEnabled]);
+  }, []);
 
   // Update order status
   const handleUpdateStatus = async (orderId, newStatus) => {
@@ -220,6 +247,26 @@ export function OwnerDashboard({ onCloseDashboard, onLogout, theme = 'modern-lat
       }
     } catch (err) {
       console.error('Failed to update status:', err);
+    }
+  };
+
+  // Update payment status (Issue 5)
+  const handleUpdatePaymentStatus = async (orderId, newPaymentStatus) => {
+    try {
+      const res = await authFetch(`/api/orders/${orderId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payment_status: newPaymentStatus })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setOrders((prev) => prev.map((o) => (o.id === orderId ? data.order : o)));
+        const statsRes = await authFetch('/api/dashboard/stats');
+        const statsData = await statsRes.json();
+        if (statsData.success) setStats(statsData.stats);
+      }
+    } catch (err) {
+      console.error('Failed to update payment status:', err);
     }
   };
 
@@ -399,12 +446,6 @@ export function OwnerDashboard({ onCloseDashboard, onLogout, theme = 'modern-lat
 
   // Calculate table occupancy status
   const tableOccupancy = useMemo(() => {
-    const activeTables = new Set(
-      orders
-        .filter((o) => ['received', 'brewing', 'ready'].includes(o.status))
-        .map((o) => o.table_number)
-    );
-
     const tables = [
       'Table 1', 'Table 2', 'Table 3', 'Table 4', 'Table 5',
       'Table 6', 'Table 7', 'Table 8', 'Table 9', 'Table 10',
@@ -613,7 +654,7 @@ export function OwnerDashboard({ onCloseDashboard, onLogout, theme = 'modern-lat
                   </div>
                 </div>
                 <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-main)', marginTop: '0.4rem' }}>
-                  ₹{(stats.totalRevenue || 0).toFixed(2)}
+                  ₹{((stats.todayRevenue !== undefined ? stats.todayRevenue : stats.totalRevenue) || 0).toFixed(2)}
                 </div>
                 <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 700 }}>+18% from yesterday</span>
               </div>
@@ -845,27 +886,44 @@ export function OwnerDashboard({ onCloseDashboard, onLogout, theme = 'modern-lat
 
                       {/* Items List */}
                       <div style={{ background: 'var(--bg-surface-elevated)', borderRadius: 'var(--radius-sm)', padding: '0.8rem', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                        {(order.items || []).map((it, idx) => (
-                          <div key={idx} style={{ fontSize: '0.85rem', display: 'flex', justifyContent: 'space-between' }}>
-                            <div>
-                              <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>{it.quantity}x</span>{' '}
-                              <span>{it.name}</span>{' '}
-                              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({it.size || 'Regular'})</span>
-                              {it.customizations && it.customizations.length > 0 && (
+                        {(order.items || []).map((it, idx) => {
+                          const custArray = Array.isArray(it.customizations)
+                            ? it.customizations
+                            : (it.customizations ? [String(it.customizations)] : []);
+                          return (
+                            <div key={idx} style={{ fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <div>
+                                  <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>{it.quantity}x</span>{' '}
+                                  <span>{it.name}</span>{' '}
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({it.size || 'Regular'})</span>
+                                </div>
+                                <span style={{ fontWeight: 600, color: 'var(--text-dim)' }}>₹{it.itemTotal || (it.price * it.quantity)}</span>
+                              </div>
+                              {it.milk && (
+                                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginLeft: '18px' }}>
+                                  🥛 Milk: <strong>{it.milk}</strong>
+                                </div>
+                              )}
+                              {custArray.length > 0 && (
                                 <div style={{ fontSize: '0.72rem', color: 'var(--primary)', marginLeft: '18px' }}>
-                                  {it.customizations.join(', ')}
+                                  {custArray.join(', ')}
+                                </div>
+                              )}
+                              {it.kitchenNotes && (
+                                <div style={{ fontSize: '0.72rem', color: '#d97706', fontStyle: 'italic', marginLeft: '18px', fontWeight: 600 }}>
+                                  📝 Note: {it.kitchenNotes}
                                 </div>
                               )}
                             </div>
-                            <span style={{ fontWeight: 600, color: 'var(--text-dim)' }}>₹{it.itemTotal || it.price * it.quantity}</span>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
 
                       {/* Kitchen Preparation Notes */}
                       {order.kitchen_notes && (
                         <div style={{ background: 'rgba(234, 139, 57, 0.08)', borderLeft: '3px solid var(--primary)', padding: '6px 10px', fontSize: '0.78rem', color: 'var(--text-main)' }}>
-                          <strong>Notes: </strong>{order.kitchen_notes}
+                          <strong>Order Instructions: </strong>{order.kitchen_notes}
                         </div>
                       )}
 
@@ -874,9 +932,32 @@ export function OwnerDashboard({ onCloseDashboard, onLogout, theme = 'modern-lat
                         <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-main)' }}>
                           Total: ₹{order.total}
                         </span>
-                        <span style={{ fontSize: '0.75rem', color: order.payment_status === 'paid' ? '#10b981' : 'var(--text-muted)', fontWeight: 700 }}>
-                          {order.payment_method === 'upi' ? 'Online Paid ✓' : 'Pay at Counter'}
-                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{
+                            fontSize: '0.74rem',
+                            fontWeight: 800,
+                            padding: '2px 8px',
+                            borderRadius: 'var(--radius-full)',
+                            background: order.payment_status === 'paid' ? 'rgba(16, 185, 129, 0.15)' : order.payment_status === 'pending_verification' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(156, 163, 175, 0.15)',
+                            color: order.payment_status === 'paid' ? '#10b981' : order.payment_status === 'pending_verification' ? '#d97706' : 'var(--text-muted)'
+                          }}>
+                            {order.payment_status === 'paid'
+                              ? (order.payment_method === 'upi' ? 'Online Paid (UPI) ✓' : 'Paid at Counter ✓')
+                              : order.payment_status === 'pending_verification'
+                                ? 'UPI (Pending Verification ⚠️)'
+                                : 'Pay at Counter (Pending)'}
+                          </span>
+                          {order.payment_status === 'pending_verification' && (
+                            <button
+                              onClick={() => handleUpdatePaymentStatus(order.id, 'paid')}
+                              className="btn btn-secondary"
+                              style={{ padding: '2px 8px', fontSize: '0.7rem', color: '#10b981', borderColor: '#10b981', height: 'auto' }}
+                              title="Confirm UPI payment settlement"
+                            >
+                              Confirm Paid ✓
+                            </button>
+                          )}
+                        </div>
                       </div>
 
                       {/* Action Buttons */}
@@ -1454,12 +1535,29 @@ export function OwnerDashboard({ onCloseDashboard, onLogout, theme = 'modern-lat
             </div>
 
             <div style={{ borderBottom: '1px dashed #000', paddingBottom: '0.8rem', marginBottom: '0.8rem' }}>
-              {(selectedOrderForKOT.items || []).map((it, idx) => (
-                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', margin: '4px 0' }}>
-                  <span>{it.quantity}x {it.name} ({it.size || 'Regular'})</span>
-                  <span style={{ fontWeight: 700 }}>₹{it.itemTotal || it.price * it.quantity}</span>
-                </div>
-              ))}
+              {(selectedOrderForKOT.items || []).map((it, idx) => {
+                const custArray = Array.isArray(it.customizations)
+                  ? it.customizations
+                  : (it.customizations ? [String(it.customizations)] : []);
+                const addonsArray = Array.isArray(it.addons)
+                  ? it.addons.map((a) => (typeof a === 'string' ? a : a.name))
+                  : [];
+                return (
+                  <div key={idx} style={{ margin: '6px 0', borderBottom: idx < selectedOrderForKOT.items.length - 1 ? '1px dotted #ccc' : 'none', paddingBottom: '4px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.92rem', fontWeight: 800 }}>
+                      <span>{it.quantity}x {it.name}</span>
+                      <span>₹{it.itemTotal || (it.price * it.quantity)}</span>
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: '#333', marginLeft: '12px' }}>
+                      <div>Size: {it.size || 'Regular'}</div>
+                      {it.milk && <div>Milk: <strong>{it.milk}</strong></div>}
+                      {addonsArray.length > 0 && <div>Add-ons: <strong>{addonsArray.join(', ')}</strong></div>}
+                      {custArray.length > 0 && <div>Customizations: <em>{custArray.join(', ')}</em></div>}
+                      {it.kitchenNotes && <div style={{ color: '#d97706', fontWeight: 700 }}>Note: {it.kitchenNotes}</div>}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
             {selectedOrderForKOT.kitchen_notes && (
