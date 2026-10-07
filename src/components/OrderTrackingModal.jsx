@@ -123,7 +123,7 @@ export function OrderTrackingModal({ isOpen, onClose, initialOrder }) {
         try {
           const data = JSON.parse(event.data);
           if (data.type === 'ORDER_UPDATED' && data.payload && order && data.payload.id === order.id) {
-            setOrder(data.payload);
+            setOrder((prev) => (prev ? { ...prev, ...data.payload } : data.payload));
             playChime();
           }
         } catch {
@@ -465,17 +465,17 @@ export function OrderTrackingModal({ isOpen, onClose, initialOrder }) {
                 {/* Totals */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: 'var(--text-muted)', paddingTop: '0.4rem' }}>
                   <span>Subtotal + GST:</span>
-                  <span>₹{(order.subtotal + order.tax).toFixed(2)}</span>
+                  <span>₹{((Number(order.subtotal) || 0) + (Number(order.tax) || 0)).toFixed(2)}</span>
                 </div>
-                {order.discount > 0 && (
+                {(Number(order.discount) || 0) > 0 && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: '#10b981' }}>
                     <span>Coupon Discount:</span>
-                    <span>-₹{order.discount.toFixed(2)}</span>
+                    <span>-₹{(Number(order.discount) || 0).toFixed(2)}</span>
                   </div>
                 )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-main)', paddingTop: '0.3rem' }}>
                   <span>Grand Total:</span>
-                  <span style={{ color: 'var(--primary)' }}>₹{order.total.toFixed(2)}</span>
+                  <span style={{ color: 'var(--primary)' }}>₹{(Number(order.total) || 0).toFixed(2)}</span>
                 </div>
               </div>
             </>

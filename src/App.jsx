@@ -98,16 +98,16 @@ export function App() {
     });
   };
 
-  const handleUpdateQuantity = (index, delta) => {
+  const handleUpdateQuantity = (index, newQty) => {
     setCartItems((prev) => {
       const item = prev[index];
       if (!item) return prev;
-      const newQty = item.quantity + delta;
-      if (newQty <= 0) {
+      const parsedQty = typeof newQty === 'number' ? newQty : item.quantity;
+      if (parsedQty <= 0) {
         return prev.filter((_, idx) => idx !== index);
       }
       const updated = [...prev];
-      updated[index] = { ...item, quantity: newQty };
+      updated[index] = { ...item, quantity: parsedQty };
       return updated;
     });
   };
@@ -160,7 +160,7 @@ export function App() {
           headers: { Authorization: `Bearer ${token}` }
         });
         const data = await res.json();
-        if (data.authenticated) {
+        if (data.success && (data.authenticated || data.role === 'owner')) {
           setIsOwnerAuthenticated(true);
         } else {
           setIsOwnerAuthenticated(false);

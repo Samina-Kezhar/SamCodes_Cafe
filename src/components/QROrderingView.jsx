@@ -216,7 +216,7 @@ export function QROrderingView({
             // 2. Real-time Order Workflow Updates from Kitchen
             else if (data.type === 'ORDER_UPDATED' && activePlacedOrder) {
               if (data.payload.id === activePlacedOrder.id) {
-                setActivePlacedOrder(data.payload);
+                setActivePlacedOrder((prev) => (prev ? { ...prev, ...data.payload } : data.payload));
               }
             }
           } catch {

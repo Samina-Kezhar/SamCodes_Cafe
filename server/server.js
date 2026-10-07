@@ -30,7 +30,6 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 // ----------------------------------------------------
 const OWNER_SECRET = process.env.OWNER_AUTH_SECRET || 'cafena-nikol-master-auth-secret-2026';
 const OWNER_PIN = process.env.OWNER_PIN || '8899';
-const OWNER_PASSWORDS = ['8899', '1234', 'admin', 'owner', 'cafena', 'coffee123'];
 
 export function generateOwnerToken() {
   const timestamp = Date.now();
@@ -280,10 +279,12 @@ function normalizeTableNumber(table) {
 app.post('/api/auth/login', loginLimiter, (req, res) => {
   try {
     const { pin, password } = req.body;
-    const candidate = String(pin || password || '').trim().toLowerCase();
+    const candidate = String(pin || password || '').trim();
 
-    // Verify against configured PIN or allowed passwords
-    const isValid = candidate === OWNER_PIN.toLowerCase() || OWNER_PASSWORDS.includes(candidate);
+    // Verify strictly against configured PIN using constant-time comparison
+    const pinBuffer = Buffer.from(candidate);
+    const expectedBuffer = Buffer.from(OWNER_PIN);
+    const isValid = pinBuffer.length === expectedBuffer.length && crypto.timingSafeEqual(pinBuffer, expectedBuffer);
     if (!isValid) {
       return res.status(401).json({ success: false, error: 'Invalid Owner PIN or Password' });
     }
@@ -303,9 +304,9 @@ app.post('/api/auth/login', loginLimiter, (req, res) => {
 app.get('/api/auth/verify', (req, res) => {
   const isOwner = isOwnerRequest(req);
   if (!isOwner) {
-    return res.status(401).json({ success: false, role: 'guest' });
+    return res.status(401).json({ success: false, authenticated: false, role: 'guest' });
   }
-  res.json({ success: true, role: 'owner' });
+  res.json({ success: true, authenticated: true, role: 'owner' });
 });
 
 // ----------------------------------------------------
@@ -963,7 +964,9 @@ app.post('/api/orders', orderLimiter, (req, res) => {
     const now = new Date().toISOString();
 
     // ATOMIC DATABASE TRANSACTION (F06)
-    const placeOrderTransaction = db.transaction(() => {
+    // Node.js DatabaseSync uses explicit BEGIN, COMMIT, ROLLBACK
+    db.exec('BEGIN');
+    try {
       const insert = db.prepare(`
         INSERT INTO orders (
           id, customer_name, customer_phone, table_number, order_type,
@@ -1010,9 +1013,12 @@ app.post('/api/orders', orderLimiter, (req, res) => {
           // ignore deduction failure if inventory item not seeded
         }
       }
-    });
 
-    placeOrderTransaction();
+      db.exec('COMMIT');
+    } catch (txError) {
+      db.exec('ROLLBACK');
+      throw txError;
+    }
 
     const savedOrder = formatOrder(db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId));
 
