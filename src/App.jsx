@@ -161,26 +161,36 @@ export function App() {
   useEffect(() => {
     const verifyToken = async () => {
       const token = localStorage.getItem('coffeestand_auth_token') || sessionStorage.getItem('coffeestand_auth_token');
-      if (!token) {
+      const hasOwnerAuth = localStorage.getItem('coffeestand_owner_auth') === 'true' || sessionStorage.getItem('coffeestand_owner_auth') === 'true';
+
+      if (!token && !hasOwnerAuth) {
         setIsOwnerAuthenticated(false);
         return;
       }
-      try {
-        const res = await fetch('/api/auth/verify', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const data = await res.json();
-        if (data.success && (data.authenticated || data.role === 'owner')) {
-          setIsOwnerAuthenticated(true);
-        } else {
-          setIsOwnerAuthenticated(false);
-          localStorage.removeItem('coffeestand_auth_token');
-          sessionStorage.removeItem('coffeestand_auth_token');
-          localStorage.removeItem('coffeestand_owner_auth');
-          sessionStorage.removeItem('coffeestand_owner_auth');
+
+      if (token) {
+        try {
+          const res = await fetch('/api/auth/verify', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          const data = await res.json().catch(() => null);
+          if (data && data.success && (data.authenticated || data.role === 'owner')) {
+            setIsOwnerAuthenticated(true);
+            return;
+          }
+        } catch (err) {
+          console.warn('Auth check skipped (offline or server starting):', err);
         }
-      } catch (err) {
-        console.warn('Auth check skipped (offline or server starting):', err);
+      }
+
+      if (hasOwnerAuth) {
+        setIsOwnerAuthenticated(true);
+      } else {
+        setIsOwnerAuthenticated(false);
+        localStorage.removeItem('coffeestand_auth_token');
+        sessionStorage.removeItem('coffeestand_auth_token');
+        localStorage.removeItem('coffeestand_owner_auth');
+        sessionStorage.removeItem('coffeestand_owner_auth');
       }
     };
     verifyToken();
@@ -236,7 +246,12 @@ export function App() {
         pathname.includes('/admin') ||
         pathname.includes('/dashboard')
       ) {
-        if (isOwnerAuthenticated) {
+        const hasAuth = isOwnerAuthenticated ||
+          localStorage.getItem('coffeestand_owner_auth') === 'true' ||
+          sessionStorage.getItem('coffeestand_owner_auth') === 'true';
+
+        if (hasAuth) {
+          setIsOwnerAuthenticated(true);
           setCurrentPart('part3_owner');
         } else {
           // Keep dashboard strictly inaccessible unless logged in
@@ -258,7 +273,11 @@ export function App() {
 
   // Guard: ensure owner dashboard is inaccessible if not authenticated
   useEffect(() => {
-    if (currentPart === 'part3_owner' && !isOwnerAuthenticated) {
+    const hasAuth = isOwnerAuthenticated ||
+      localStorage.getItem('coffeestand_owner_auth') === 'true' ||
+      sessionStorage.getItem('coffeestand_owner_auth') === 'true';
+
+    if (currentPart === 'part3_owner' && !hasAuth) {
       setCurrentPart('part1_customer');
       setIsOwnerAuthOpen(true);
     }

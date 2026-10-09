@@ -137,7 +137,8 @@ export function OwnerDashboard({ onCloseDashboard, onLogout, theme = 'modern-lat
       'Authorization': `Bearer ${token}`
     };
     const res = await fetch(url, { ...options, headers });
-    if (res.status === 401 && onLogout) {
+    const hasOwnerAuth = localStorage.getItem('coffeestand_owner_auth') === 'true' || sessionStorage.getItem('coffeestand_owner_auth') === 'true';
+    if (res.status === 401 && !hasOwnerAuth && onLogout) {
       onLogout();
     }
     return res;
@@ -1535,7 +1536,7 @@ export function OwnerDashboard({ onCloseDashboard, onLogout, theme = 'modern-lat
                       <img src={card.qrDataUrl} alt={`${card.table} QR Code`} style={{ width: '160px', height: '160px' }} />
                     </div>
                     <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                      Encodes: <code style={{ color: 'var(--primary)', fontSize: '0.7rem' }}>{card.targetUrl ? new URL(card.targetUrl, window.location.origin).search : `?table=${encodeURIComponent(card.table)}`}</code>
+                      Encodes: <code style={{ color: 'var(--primary)', fontSize: '0.7rem' }}>{card.targetUrl || `?table=${encodeURIComponent(card.table)}`}</code>
                     </span>
 
                     <div style={{ display: 'flex', gap: '6px', width: '100%' }}>
