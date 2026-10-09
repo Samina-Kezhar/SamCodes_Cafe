@@ -50,42 +50,70 @@ export function ReviewsSection() {
 
   const handleSubmitFeedback = async (e) => {
     e.preventDefault();
-    if (!formName.trim() || !formComment.trim()) {
-      setFormError('Please enter your name and review comment.');
+    setFormError('');
+
+    const trimmedName = formName.trim();
+    if (trimmedName.length < 2) {
+      setFormError('Please enter your full name (minimum 2 characters).');
       return;
     }
 
+    const trimmedComment = formComment.trim();
+    if (trimmedComment.length < 5) {
+      setFormError('Please share a few words about your visit (minimum 5 characters).');
+      return;
+    }
+
+    if (!formRating || formRating < 1 || formRating > 5) {
+      setFormError('Please select a star rating between 1 and 5.');
+      return;
+    }
+
+    if (formEmail.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formEmail.trim())) {
+        setFormError('Please enter a valid email address, or leave it blank.');
+        return;
+      }
+    }
+
     setSubmitting(true);
-    setFormError('');
 
     try {
       const res = await fetch('/api/reviews', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: formName.trim(),
+          name: trimmedName,
           rating: formRating,
-          comment: formComment.trim(),
-          favorite_item: formFavorite.trim() || 'Lotus Biscoff Dream Frappe'
+          comment: trimmedComment,
+          favorite_item: formFavorite.trim() || 'Cafena Signature Roast'
         })
       });
 
-      const data = await res.json();
-      if (data.success) {
-        setSubmitted(true);
-        // Refresh reviews list
-        fetchReviews();
-        // Reset form
-        setFormName('');
-        setFormEmail('');
-        setFormFavorite('');
-        setFormComment('');
-        setFormRating(5);
-      } else {
-        setFormError(data.error || 'Failed to submit review');
+      let data = null;
+      try {
+        data = await res.json();
+      } catch {
+        data = null;
       }
+
+      if (!res.ok || !data?.success) {
+        setFormError(data?.error || `Failed to save review (${res.status}). Please try again.`);
+        return;
+      }
+
+      setSubmitted(true);
+      // Refresh reviews list
+      fetchReviews();
+      // Reset form
+      setFormName('');
+      setFormEmail('');
+      setFormFavorite('');
+      setFormComment('');
+      setFormRating(5);
     } catch (err) {
-      setFormError('Connection error. Please try again.');
+      setFormError(err.message || 'Connection error. Please try again.');
     } finally {
       setSubmitting(false);
     }

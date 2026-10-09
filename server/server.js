@@ -140,12 +140,12 @@ const orderLimiter = createRateLimiter({
 });
 const contactLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: 100,
   message: 'Too many messages sent. Please contact us via phone or WhatsApp.'
 });
 const reviewLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: 100,
   message: 'Too many reviews submitted. Thank you for your feedback!'
 });
 
@@ -1205,9 +1205,17 @@ app.post('/api/contact', contactLimiter, (req, res) => {
       return res.status(400).json({ success: false, error: 'Valid email address is required' });
     }
 
+    // Normalize and validate 10-digit Indian phone number
     const phoneDigits = cleanPhone.replace(/\D/g, '');
-    if (!cleanPhone || phoneDigits.length < 7) {
-      return res.status(400).json({ success: false, error: 'Valid contact phone number is required' });
+    let corePhone = phoneDigits;
+    if (phoneDigits.length === 11 && phoneDigits.startsWith('0')) {
+      corePhone = phoneDigits.slice(1);
+    } else if (phoneDigits.length === 12 && phoneDigits.startsWith('91')) {
+      corePhone = phoneDigits.slice(2);
+    }
+
+    if (!corePhone || corePhone.length !== 10 || !/^[6-9]/.test(corePhone)) {
+      return res.status(400).json({ success: false, error: 'Valid 10-digit mobile number starting with 6, 7, 8, or 9 is required' });
     }
 
     const cleanPartySize = Math.min(20, Math.max(1, parseInt(party_size || 2, 10)));
@@ -1220,12 +1228,39 @@ app.post('/api/contact', contactLimiter, (req, res) => {
       if (!cleanDate) {
         return res.status(400).json({ success: false, error: 'Preferred reservation date is required' });
       }
-      const todayStr = new Date().toISOString().slice(0, 10);
+      // Calculate current date in IST (Ahmedabad UTC+5:30)
+      const nowIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+      const todayStr = nowIST.toISOString().slice(0, 10);
       if (cleanDate < todayStr) {
         return res.status(400).json({ success: false, error: 'Reservation date cannot be in the past' });
       }
       if (!cleanTime) {
         return res.status(400).json({ success: false, error: 'Preferred reservation time is required' });
+      }
+
+      // Check operating hours: 9:00 AM (09:00) to 11:30 PM (23:30)
+      const timeParts = cleanTime.split(':');
+      if (timeParts.length >= 2) {
+        const h = parseInt(timeParts[0], 10);
+        const m = parseInt(timeParts[1], 10);
+        if (!isNaN(h) && !isNaN(m)) {
+          const totalMins = h * 60 + m;
+          if (totalMins < 9 * 60 || totalMins > 23 * 60 + 30) {
+            return res.status(400).json({
+              success: false,
+              error: 'Table reservations are only available during café operating hours (9:00 AM to 11:30 PM)'
+            });
+          }
+          if (cleanDate === todayStr) {
+            const currentMinsIST = nowIST.getUTCHours() * 60 + nowIST.getUTCMinutes();
+            if (totalMins < currentMinsIST) {
+              return res.status(400).json({
+                success: false,
+                error: 'Reservation time for today cannot be in the past'
+              });
+            }
+          }
+        }
       }
     }
 

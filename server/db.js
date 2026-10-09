@@ -86,7 +86,13 @@ export async function saveDbNow() {
     if (fs.existsSync(dataDir)) {
       fs.writeFileSync(dbPath, data);
     }
-  } catch {}
+  } catch {
+    try {
+      if (fs.existsSync('/tmp')) {
+        fs.writeFileSync('/tmp/coffeestand.db', data);
+      }
+    } catch {}
+  }
   const store = getBlobStore();
   if (store) {
     try {
@@ -103,10 +109,16 @@ export function scheduleSave() {
   if (inTransaction) return;
 
   try {
-    if (!process.env.NETLIFY && fs.existsSync(dataDir)) {
+    if (fs.existsSync(dataDir)) {
       fs.writeFileSync(dbPath, Buffer.from(rawDb.export()));
     }
-  } catch {}
+  } catch {
+    try {
+      if (fs.existsSync('/tmp')) {
+        fs.writeFileSync('/tmp/coffeestand.db', Buffer.from(rawDb.export()));
+      }
+    } catch {}
+  }
 
   const store = getBlobStore();
   if (store && !savePending) {

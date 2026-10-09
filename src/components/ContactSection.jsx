@@ -19,6 +19,111 @@ export function ContactSection() {
   const [submitted, setSubmitted] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
+  // Get local date formatted as YYYY-MM-DD
+  const getTodayLocalDateStr = () => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
+  // Indian mobile phone number validation
+  const validatePhone = (rawPhone) => {
+    if (!rawPhone || !rawPhone.trim()) {
+      return { valid: false, error: 'Please enter your phone number.' };
+    }
+    const digits = rawPhone.replace(/\D/g, '');
+    let core10 = digits;
+    if (digits.length === 11 && digits.startsWith('0')) {
+      core10 = digits.slice(1);
+    } else if (digits.length === 12 && digits.startsWith('91')) {
+      core10 = digits.slice(2);
+    }
+
+    if (core10.length !== 10) {
+      return {
+        valid: false,
+        error: 'Please enter a valid 10-digit mobile number (e.g. 98250 12345 or +91 98250 12345).'
+      };
+    }
+
+    if (!/^[6-9]/.test(core10)) {
+      return {
+        valid: false,
+        error: 'Mobile number must start with 6, 7, 8, or 9 (Indian standard).'
+      };
+    }
+
+    return { valid: true, cleanPhone: core10 };
+  };
+
+  // Date and Time validation
+  const validateDateTime = (inquiryType, preferredDate, preferredTime) => {
+    if (inquiryType === 'general') return { valid: true };
+
+    if (!preferredDate) {
+      return { valid: false, error: 'Please choose a preferred reservation date.' };
+    }
+
+    const todayStr = getTodayLocalDateStr();
+    if (preferredDate < todayStr) {
+      return {
+        valid: false,
+        error: 'Reservation date cannot be in the past. Please select today or an upcoming date.'
+      };
+    }
+
+    if (!preferredTime) {
+      return { valid: false, error: 'Please choose a preferred reservation time.' };
+    }
+
+    const timeParts = preferredTime.split(':');
+    if (timeParts.length < 2) {
+      return { valid: false, error: 'Please enter a valid reservation time slot.' };
+    }
+
+    const h = parseInt(timeParts[0], 10);
+    const m = parseInt(timeParts[1], 10);
+    if (isNaN(h) || isNaN(m)) {
+      return { valid: false, error: 'Please enter a valid reservation time slot.' };
+    }
+
+    const selMinutes = h * 60 + m;
+    const openMinutes = 9 * 60; // 9:00 AM (540 mins)
+    const closeMinutes = 23 * 60 + 30; // 11:30 PM (1410 mins)
+
+    // Operating hours check: 9:00 AM to 11:30 PM
+    if (selMinutes < openMinutes || selMinutes > closeMinutes) {
+      return {
+        valid: false,
+        error: 'Table reservations are only available during café operating hours: 9:00 AM to 11:30 PM.'
+      };
+    }
+
+    // Today time check
+    if (preferredDate === todayStr) {
+      const now = new Date();
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+      if (currentMinutes >= closeMinutes) {
+        return {
+          valid: false,
+          error: 'Table reservations for today are closed (operating hours end at 12:00 AM midnight). Please choose tomorrow or visit us for walk-in seating.'
+        };
+      }
+
+      if (selMinutes < currentMinutes + 15) {
+        return {
+          valid: false,
+          error: 'For today, reservation time must be at least 15 minutes ahead of the current time.'
+        };
+      }
+    }
+
+    return { valid: true };
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage('');
@@ -36,26 +141,18 @@ export function ContactSection() {
       return;
     }
 
-    const phoneDigits = formData.phone.replace(/\D/g, '');
-    if (phoneDigits.length < 10) {
-      setErrorMessage('Please enter a valid 10-digit phone number.');
+    // Phone number validation
+    const phoneCheck = validatePhone(formData.phone);
+    if (!phoneCheck.valid) {
+      setErrorMessage(phoneCheck.error);
       return;
     }
 
-    const todayStr = new Date().toISOString().split('T')[0];
-    if (formData.inquiry_type !== 'general') {
-      if (!formData.preferred_date) {
-        setErrorMessage('Please choose a preferred reservation date.');
-        return;
-      }
-      if (formData.preferred_date < todayStr) {
-        setErrorMessage('Reservation date cannot be in the past. Please select today or a future date.');
-        return;
-      }
-      if (!formData.preferred_time) {
-        setErrorMessage('Please choose a preferred reservation time.');
-        return;
-      }
+    // Date & Time validation
+    const dateTimeCheck = validateDateTime(formData.inquiry_type, formData.preferred_date, formData.preferred_time);
+    if (!dateTimeCheck.valid) {
+      setErrorMessage(dateTimeCheck.error);
+      return;
     }
 
     setSubmitting(true);
@@ -67,12 +164,20 @@ export function ContactSection() {
         body: JSON.stringify({
           ...formData,
           name: trimmedName,
+          phone: phoneCheck.cleanPhone,
           email: formData.email.trim()
         })
       });
-      const data = await res.json();
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to submit form');
+
+      let data = null;
+      try {
+        data = await res.json();
+      } catch {
+        data = null;
+      }
+
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.error || `Failed to save reservation request (${res.status}). Please try again.`);
       }
 
       setSubmitted(true);
@@ -218,7 +323,7 @@ export function ContactSection() {
                     </label>
                     <input
                       type="tel"
-                      placeholder="098250 12345"
+                      placeholder="98250 12345"
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                       required
@@ -233,6 +338,9 @@ export function ContactSection() {
                         outline: 'none'
                       }}
                     />
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)', display: 'block', marginTop: '3px' }}>
+                      10 digits starting with 6-9 (e.g. 98250 12345 or +91 98250 12345)
+                    </span>
                   </div>
                 </div>
 
@@ -292,7 +400,7 @@ export function ContactSection() {
                       </label>
                       <input
                         type="date"
-                        min={new Date().toISOString().split('T')[0]}
+                        min={getTodayLocalDateStr()}
                         value={formData.preferred_date}
                         onChange={(e) => setFormData({ ...formData, preferred_date: e.target.value })}
                         style={{
@@ -309,10 +417,12 @@ export function ContactSection() {
 
                     <div>
                       <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.3rem' }}>
-                        Time
+                        Time (9AM - 11:30PM)
                       </label>
                       <input
                         type="time"
+                        min="09:00"
+                        max="23:30"
                         value={formData.preferred_time}
                         onChange={(e) => setFormData({ ...formData, preferred_time: e.target.value })}
                         style={{
