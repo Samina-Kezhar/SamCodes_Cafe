@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Play, Volume2, VolumeX, Sparkles, ExternalLink, Film, MessageCircle } from 'lucide-react';
 import { InstagramIcon as Instagram } from './InstagramIcon';
-import { InstagramLink } from './InstagramLink';
 import { CafenaBrushStroke } from './CafenaDecorations';
 
 const VIDEOS = [
@@ -12,7 +11,7 @@ const VIDEOS = [
     thumbnail: 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?auto=format&fit=crop&w=800&q=80',
     duration: '0:45',
     views: '14.2K Views on Instagram',
-    instagramUrl: 'https://www.instagram.com/cafena.nikol'
+    instagramUrl: 'https://www.instagram.com/coffeestand.nikol/'
   },
   {
     id: 'vid-2',
@@ -21,7 +20,7 @@ const VIDEOS = [
     thumbnail: 'https://images.unsplash.com/photo-1534778101976-62847782c213?auto=format&fit=crop&w=800&q=80',
     duration: '0:58',
     views: '18.9K Views on Instagram',
-    instagramUrl: 'https://www.instagram.com/cafena.nikol'
+    instagramUrl: 'https://www.instagram.com/coffeestand.nikol/'
   },
   {
     id: 'vid-3',
@@ -30,7 +29,7 @@ const VIDEOS = [
     thumbnail: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80',
     duration: '1:15',
     views: '22.5K Views on Instagram',
-    instagramUrl: 'https://www.instagram.com/cafena.nikol'
+    instagramUrl: 'https://www.instagram.com/coffeestand.nikol/'
   }
 ];
 
@@ -161,14 +160,15 @@ export function VideosSection() {
                     <span>Watch Preview</span>
                   </button>
 
-                  <InstagramLink
-                    handleOrUrl={vid.instagramUrl}
+                  <a
+                    href={vid.instagramUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     style={{ fontSize: '0.82rem', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}
-                    showIcon={false}
                   >
                     <span>Instagram Reel</span>
                     <ExternalLink size={13} />
-                  </InstagramLink>
+                  </a>
                 </div>
               </div>
             </div>
@@ -213,15 +213,16 @@ export function VideosSection() {
             </div>
           </div>
 
-          <InstagramLink
-            handleOrUrl="cafena.nikol"
+          <a
+            href="https://www.instagram.com/cafena.nikol"
+            target="_blank"
+            rel="noopener noreferrer"
             className="btn btn-primary"
             style={{ padding: '0.75rem 1.6rem', fontSize: '0.95rem' }}
-            showIcon={true}
-            iconSize={18}
           >
+            <Instagram size={18} />
             <span>Visit @cafena.nikol</span>
-          </InstagramLink>
+          </a>
         </div>
       </div>
 
@@ -274,15 +275,16 @@ export function VideosSection() {
                 <p style={{ color: 'var(--accent-latte)', fontSize: '0.9rem', maxWidth: '480px', marginBottom: '1.5rem' }}>
                   {activeVideo.subtitle}
                 </p>
-                <InstagramLink
-                  handleOrUrl={activeVideo.instagramUrl}
+                <a
+                  href={activeVideo.instagramUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="btn btn-primary"
                   style={{ padding: '0.75rem 1.5rem', fontSize: '0.9rem' }}
-                  showIcon={true}
-                  iconSize={16}
                 >
+                  <Instagram size={16} />
                   <span>Watch High-Res Reel on Instagram</span>
-                </InstagramLink>
+                </a>
               </div>
             </div>
             <div style={{ padding: '1rem 1.5rem', background: 'var(--bg-surface)', display: 'flex', justifyContent: 'flex-end' }}>

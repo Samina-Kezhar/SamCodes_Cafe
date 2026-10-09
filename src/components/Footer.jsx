@@ -1,7 +1,6 @@
 import React from 'react';
 import { MapPin, Phone, Clock, ArrowUp, Lock, MessageCircle } from 'lucide-react';
 import { InstagramIcon as Instagram } from './InstagramIcon';
-import { InstagramLink } from './InstagramLink';
 import { CafenaLogoStamp } from './CafenaDecorations';
 
 export function Footer({ onOpenOwnerLogin }) {
@@ -41,8 +40,10 @@ export function Footer({ onOpenOwnerLogin }) {
             </p>
 
             <div style={{ display: 'flex', gap: '0.8rem' }}>
-              <InstagramLink
-                handleOrUrl="cafena.nikol"
+              <a
+                href="https://www.instagram.com/coffeestand.nikol"
+                target="_blank"
+                rel="noopener noreferrer"
                 style={{
                   width: '40px',
                   height: '40px',
@@ -55,12 +56,10 @@ export function Footer({ onOpenOwnerLogin }) {
                   color: 'var(--primary)',
                   transition: 'all 0.2s'
                 }}
-                showIcon={true}
-                iconSize={18}
-                ariaLabel="Visit Cafena on Instagram"
+                aria-label="Instagram"
               >
-                {null}
-              </InstagramLink>
+                <Instagram size={18} />
+              </a>
               <a
                 href="https://wa.me/916353935169"
                 target="_blank"
