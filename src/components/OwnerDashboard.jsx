@@ -4,12 +4,13 @@ import {
   Printer, Search, QrCode, Utensils,
   X, Sparkles,
   Package, TrendingUp, Tag, Users, Star, Plus, Trash2, Edit3, LogOut, Download,
-  Sun, Moon
+  Sun, Moon, ExternalLink, Copy, Check
 } from 'lucide-react';
+import QRCode from 'qrcode';
 import { playChime } from '../utils/audioAlert.js';
 import { CafenaLogoStamp } from './CafenaDecorations';
 
-export function OwnerDashboard({ onCloseDashboard, onLogout, theme = 'modern-latte', onToggleTheme }) {
+export function OwnerDashboard({ onCloseDashboard, onLogout, theme = 'modern-latte', onToggleTheme, onOpenQrOrdering }) {
   const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'orders' | 'tables' | 'menu' | 'inventory' | 'offers' | 'customers'
   const [orders, setOrders] = useState([]);
   const [menuItems, setMenuItems] = useState([]);
@@ -36,6 +37,63 @@ export function OwnerDashboard({ onCloseDashboard, onLogout, theme = 'modern-lat
   const [loading, setLoading] = useState(true);
   const [selectedOrderForKOT, setSelectedOrderForKOT] = useState(null);
   const [allTableCards, setAllTableCards] = useState([]);
+
+  // QR Website & Generator Configuration (Part 3 QR website integration)
+  const qrBaseUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_QR_BASE_URL) || window.location.origin;
+  const [selectedGenTable, setSelectedGenTable] = useState('Table 4');
+  const [customGenTable, setCustomGenTable] = useState('');
+  const [activeGenQrDataUrl, setActiveGenQrDataUrl] = useState('');
+  const [activeGenTargetUrl, setActiveGenTargetUrl] = useState('');
+  const [copiedQrUrl, setCopiedQrUrl] = useState(false);
+
+  // Live generate the interactive QR code whenever target table changes
+  useEffect(() => {
+    const tableIdentifier = customGenTable.trim() || selectedGenTable;
+    const target = `${qrBaseUrl}/?table=${encodeURIComponent(tableIdentifier)}`;
+    setActiveGenTargetUrl(target);
+
+    QRCode.toDataURL(target, {
+      width: 400,
+      margin: 2,
+      color: {
+        dark: '#1c1510',
+        light: '#ffffff'
+      }
+    })
+      .then(setActiveGenQrDataUrl)
+      .catch((err) => console.error('Failed to generate dashboard QR:', err));
+  }, [selectedGenTable, customGenTable, qrBaseUrl]);
+
+  const defaultTables = useMemo(() => [
+    'Table 1', 'Table 2', 'Table 3', 'Table 4', 'Table 5',
+    'Table 6', 'Table 7', 'Table 8', 'Table 9', 'Table 10',
+    'Patio 1', 'Patio 2', 'Patio 3', 'Patio 4', 'Counter / Takeaway'
+  ], []);
+
+  // Ensure all table cards encode the accurate QR website URL
+  useEffect(() => {
+    let isMounted = true;
+    Promise.all(
+      defaultTables.map(async (table) => {
+        const targetUrl = `${qrBaseUrl}/?table=${encodeURIComponent(table)}`;
+        const qrDataUrl = await QRCode.toDataURL(targetUrl, {
+          width: 320,
+          margin: 2,
+          color: {
+            dark: '#1c1510',
+            light: '#ffffff'
+          }
+        });
+        return { table, targetUrl, qrDataUrl };
+      })
+    ).then((generatedCards) => {
+      if (isMounted) {
+        setAllTableCards(generatedCards);
+      }
+    }).catch((err) => console.warn('Could not generate client QR cards:', err));
+
+    return () => { isMounted = false; };
+  }, [qrBaseUrl, defaultTables]);
 
   // Modals for admin actions
   const [isAddItemOpen, setIsAddItemOpen] = useState(false);
@@ -1196,12 +1254,260 @@ export function OwnerDashboard({ onCloseDashboard, onLogout, theme = 'modern-lat
               )}
             </div>
 
-            {/* Printable Table QR Cards Grid */}
+            {/* 1. Interactive On-Demand QR Code Generator (Connected to QR Website) */}
+            <div
+              style={{
+                background: 'var(--bg-surface)',
+                border: '1.5px solid var(--border-medium)',
+                borderRadius: 'var(--radius-lg)',
+                padding: '2rem',
+                boxShadow: 'var(--shadow-sm)'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div
+                    style={{
+                      width: '42px',
+                      height: '42px',
+                      borderRadius: '10px',
+                      background: 'rgba(234, 139, 57, 0.15)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'var(--primary)'
+                    }}
+                  >
+                    <QrCode size={22} />
+                  </div>
+                  <div>
+                    <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>
+                      Live Table QR Generator
+                    </h3>
+                    <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                      Encodes direct links to the Guest QR Contactless Ordering site (Part 3)
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <a
+                    href={activeGenTargetUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-secondary"
+                    style={{ padding: '0.45rem 0.95rem', fontSize: '0.82rem', gap: '6px' }}
+                    title="Open encoded QR link in a new browser tab"
+                  >
+                    <ExternalLink size={15} />
+                    <span>Open QR Website</span>
+                  </a>
+
+                  {onOpenQrOrdering && (
+                    <button
+                      onClick={() => onOpenQrOrdering(customGenTable.trim() || selectedGenTable)}
+                      className="btn btn-primary"
+                      style={{ padding: '0.45rem 0.95rem', fontSize: '0.82rem', gap: '6px' }}
+                      title="Switch directly to QR Ordering view in this app"
+                    >
+                      <Sparkles size={15} />
+                      <span>Simulate In-App Scan</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Generator Configuration Grid */}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                  gap: '2rem',
+                  alignItems: 'center'
+                }}
+              >
+                {/* Form Controls */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+                  <div>
+                    <label style={{ fontSize: '0.84rem', fontWeight: 700, color: 'var(--text-main)', display: 'block', marginBottom: '0.4rem' }}>
+                      Select Existing Table:
+                    </label>
+                    <select
+                      value={selectedGenTable}
+                      onChange={(e) => {
+                        setSelectedGenTable(e.target.value);
+                        setCustomGenTable('');
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '0.65rem 1rem',
+                        background: 'var(--bg-surface-elevated)',
+                        border: '1px solid var(--border-medium)',
+                        borderRadius: 'var(--radius-md)',
+                        color: 'var(--text-main)',
+                        fontSize: '0.92rem',
+                        fontWeight: 600,
+                        outline: 'none',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {[
+                        'Table 1', 'Table 2', 'Table 3', 'Table 4', 'Table 5',
+                        'Table 6', 'Table 7', 'Table 8', 'Table 9', 'Table 10',
+                        'Patio 1', 'Patio 2', 'Patio 3', 'Patio 4', 'Counter / Takeaway'
+                      ].map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.84rem', fontWeight: 700, color: 'var(--text-main)', display: 'block', marginBottom: '0.4rem' }}>
+                      Or Custom Table / Booth Identifier:
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. VIP Lounge, Booth 3, Terrace A"
+                      value={customGenTable}
+                      onChange={(e) => setCustomGenTable(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '0.65rem 1rem',
+                        background: 'var(--bg-surface-elevated)',
+                        border: '1px solid var(--border-medium)',
+                        borderRadius: 'var(--radius-md)',
+                        color: 'var(--text-main)',
+                        fontSize: '0.92rem',
+                        outline: 'none'
+                      }}
+                    />
+                    <span style={{ fontSize: '0.74rem', color: 'var(--text-dim)', marginTop: '4px', display: 'block' }}>
+                      Leave blank to use the dropdown selection above
+                    </span>
+                  </div>
+
+                  {/* Encoded URL Display with Copy Button */}
+                  <div>
+                    <label style={{ fontSize: '0.84rem', fontWeight: 700, color: 'var(--text-main)', display: 'block', marginBottom: '0.4rem' }}>
+                      Encoded QR Website Destination URL:
+                    </label>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        background: 'var(--bg-surface-elevated)',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: 'var(--radius-md)',
+                        padding: '0.45rem 0.75rem'
+                      }}
+                    >
+                      <input
+                        type="text"
+                        readOnly
+                        value={activeGenTargetUrl}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: 'var(--primary)',
+                          fontFamily: 'monospace',
+                          fontSize: '0.82rem',
+                          width: '100%',
+                          outline: 'none'
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(activeGenTargetUrl);
+                          setCopiedQrUrl(true);
+                          setTimeout(() => setCopiedQrUrl(false), 2000);
+                        }}
+                        className="btn btn-secondary"
+                        style={{ padding: '4px 8px', fontSize: '0.75rem', gap: '4px', flexShrink: 0 }}
+                        title="Copy destination URL to clipboard"
+                      >
+                        {copiedQrUrl ? <Check size={13} style={{ color: '#10b981' }} /> : <Copy size={13} />}
+                        <span>{copiedQrUrl ? 'Copied' : 'Copy'}</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Live Card Preview */}
+                <div
+                  style={{
+                    background: '#fff',
+                    color: '#1a140f',
+                    borderRadius: 'var(--radius-lg)',
+                    padding: '1.5rem',
+                    textAlign: 'center',
+                    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.15)',
+                    border: '3px solid var(--primary)',
+                    maxWidth: '300px',
+                    margin: '0 auto'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginBottom: '4px' }}>
+                    <CafenaLogoStamp size={28} />
+                    <span style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: '1.2rem', letterSpacing: '0.04em' }}>
+                      CAFENA
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      display: 'inline-block',
+                      background: '#1a140f',
+                      color: '#fff',
+                      padding: '3px 12px',
+                      borderRadius: '999px',
+                      fontSize: '0.8rem',
+                      fontWeight: 800,
+                      margin: '6px 0'
+                    }}
+                  >
+                    📍 {(customGenTable.trim() || selectedGenTable).toUpperCase()}
+                  </div>
+
+                  {activeGenQrDataUrl ? (
+                    <div style={{ margin: '8px 0' }}>
+                      <img
+                        src={activeGenQrDataUrl}
+                        alt={`QR code for ${customGenTable.trim() || selectedGenTable}`}
+                        style={{ width: '180px', height: '180px', borderRadius: '8px', border: '1px solid #e5e5e5', padding: '6px' }}
+                      />
+                    </div>
+                  ) : (
+                    <div style={{ width: '180px', height: '180px', margin: '8px auto', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f5f5' }}>
+                      Generating...
+                    </div>
+                  )}
+
+                  <span style={{ fontSize: '0.74rem', color: '#666', fontWeight: 600, display: 'block', marginBottom: '10px' }}>
+                    Scan to Open QR Menu & Order
+                  </span>
+
+                  <a
+                    href={activeGenQrDataUrl}
+                    download={`cafena-qr-${(customGenTable.trim() || selectedGenTable).toLowerCase().replace(/\s+/g, '-')}.png`}
+                    className="btn btn-primary"
+                    style={{ padding: '0.4rem 0.8rem', fontSize: '0.78rem', width: '100%', justifyContent: 'center', gap: '5px' }}
+                  >
+                    <Download size={13} />
+                    <span>Download PNG</span>
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            {/* 2. Printable Table QR Cards Grid */}
             <div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
                 <div>
                   <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)' }}>Assigned QR Tent Cards</h3>
-                  <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Print or download table QR codes for acrylic tent cards</span>
+                  <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                    Print, test, or download table QR codes linking directly to each table's contactless ordering page
+                  </span>
                 </div>
               </div>
 
@@ -1229,18 +1535,32 @@ export function OwnerDashboard({ onCloseDashboard, onLogout, theme = 'modern-lat
                       <img src={card.qrDataUrl} alt={`${card.table} QR Code`} style={{ width: '160px', height: '160px' }} />
                     </div>
                     <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                      Scan to Order directly at {card.table}
+                      Encodes: <code style={{ color: 'var(--primary)', fontSize: '0.7rem' }}>{card.targetUrl ? new URL(card.targetUrl, window.location.origin).search : `?table=${encodeURIComponent(card.table)}`}</code>
                     </span>
 
-                    <a
-                      href={card.qrDataUrl}
-                      download={`cafena-qr-${card.table.toLowerCase().replace(/\s+/g, '-')}.png`}
-                      className="btn btn-secondary"
-                      style={{ padding: '0.45rem 1rem', fontSize: '0.8rem', gap: '6px', width: '100%', justifyContent: 'center' }}
-                    >
-                      <Download size={14} />
-                      <span>Download PNG</span>
-                    </a>
+                    <div style={{ display: 'flex', gap: '6px', width: '100%' }}>
+                      <a
+                        href={card.targetUrl || `${qrBaseUrl}/?table=${encodeURIComponent(card.table)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn btn-outline"
+                        style={{ padding: '0.45rem', fontSize: '0.78rem', gap: '4px', flex: 1, justifyContent: 'center' }}
+                        title={`Open QR ordering view for ${card.table} in a new tab`}
+                      >
+                        <ExternalLink size={13} />
+                        <span>Test Link</span>
+                      </a>
+
+                      <a
+                        href={card.qrDataUrl}
+                        download={`cafena-qr-${card.table.toLowerCase().replace(/\s+/g, '-')}.png`}
+                        className="btn btn-secondary"
+                        style={{ padding: '0.45rem', fontSize: '0.78rem', gap: '4px', flex: 1, justifyContent: 'center' }}
+                      >
+                        <Download size={13} />
+                        <span>Download</span>
+                      </a>
+                    </div>
                   </div>
                 ))}
               </div>

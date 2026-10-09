@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import {
   Menu as MenuIcon, X, Sparkles, Utensils, Image,
-  Film, Info, PhoneCall, Sun, Moon, Star, ShoppingBag
+  Film, Info, PhoneCall, Sun, Moon, Star
 } from 'lucide-react';
 import { CafenaLogoStamp } from './CafenaDecorations';
 
 export function Navbar({
   theme = 'warm-cream',
-  onToggleTheme,
-  onOpenCart,
-  cartCount = 0
+  onToggleTheme
 }) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -113,48 +111,6 @@ export function Navbar({
 
         {/* Right Action Controls */}
         <div className="nav-actions">
-          {/* Cart Drawer Trigger button (U01) */}
-          {onOpenCart && (
-            <button
-              onClick={onOpenCart}
-              className="btn-icon"
-              aria-label="View Order Cart"
-              title="View Order Cart"
-              style={{
-                width: '44px',
-                height: '44px',
-                background: 'var(--bg-surface-elevated)',
-                borderColor: 'var(--border-medium)',
-                color: 'var(--text-main)',
-                borderRadius: '50%',
-                cursor: 'pointer',
-                position: 'relative'
-              }}
-            >
-              <ShoppingBag size={19} style={{ color: 'var(--primary)' }} />
-              {cartCount > 0 && (
-                <span
-                  style={{
-                    position: 'absolute',
-                    top: '-4px',
-                    right: '-4px',
-                    background: 'var(--primary)',
-                    color: '#fff',
-                    fontSize: '0.68rem',
-                    fontWeight: 800,
-                    borderRadius: '10px',
-                    padding: '2px 5px',
-                    minWidth: '18px',
-                    textAlign: 'center',
-                    lineHeight: 1
-                  }}
-                >
-                  {cartCount}
-                </span>
-              )}
-            </button>
-          )}
-
           {/* Theme Toggle Button */}
           <button
             onClick={onToggleTheme}
@@ -217,16 +173,6 @@ export function Navbar({
           </div>
 
           <div style={{ marginTop: '0.8rem', paddingTop: '0.8rem', borderTop: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-            {onOpenCart && (
-              <button
-                onClick={() => { onOpenCart(); setMobileMenuOpen(false); }}
-                className="btn btn-primary"
-                style={{ width: '100%', padding: '0.65rem', fontSize: '0.85rem', justifyContent: 'center', gap: '0.5rem' }}
-              >
-                <ShoppingBag size={16} />
-                <span>View Order Cart ({cartCount})</span>
-              </button>
-            )}
 
             <button
               onClick={() => { onToggleTheme(); setMobileMenuOpen(false); }}

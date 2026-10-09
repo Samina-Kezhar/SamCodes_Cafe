@@ -3,7 +3,7 @@ import { MapPin, Phone, Clock, ArrowUp, Lock, MessageCircle } from 'lucide-react
 import { InstagramIcon as Instagram } from './InstagramIcon';
 import { CafenaLogoStamp } from './CafenaDecorations';
 
-export function Footer() {
+export function Footer({ onOpenOwnerLogin }) {
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -134,6 +134,28 @@ export function Footer() {
               <li><a href="#about" className="hover-primary">Our Story & Heritage</a></li>
               <li><a href="#reviews" className="hover-primary">Guest Testimonials</a></li>
               <li><a href="#contact" className="hover-primary">Reserve a Table</a></li>
+              {onOpenOwnerLogin && (
+                <li>
+                  <button
+                    onClick={onOpenOwnerLogin}
+                    className="hover-primary"
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      font: 'inherit',
+                      color: 'inherit',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px'
+                    }}
+                  >
+                    <Lock size={12} style={{ color: 'var(--accent-gold)' }} />
+                    <span>Staff & Owner Login</span>
+                  </button>
+                </li>
+              )}
             </ul>
           </div>
 
@@ -193,6 +215,32 @@ export function Footer() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.2rem' }}>
+            {onOpenOwnerLogin && (
+              <button
+                onClick={onOpenOwnerLogin}
+                className="hover-primary"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  color: 'var(--text-muted)',
+                  background: 'var(--bg-surface)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '5px 12px',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+                aria-label="Owner Login"
+                title="Management and Kitchen Dashboard Login"
+              >
+                <Lock size={13} style={{ color: 'var(--accent-gold)' }} />
+                <span>Owner Login</span>
+              </button>
+            )}
+
             <button
               onClick={scrollToTop}
               style={{
@@ -200,7 +248,10 @@ export function Footer() {
                 alignItems: 'center',
                 gap: '4px',
                 color: 'var(--accent-gold)',
-                fontWeight: 600
+                fontWeight: 600,
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer'
               }}
             >
               <span>Back to Top</span>

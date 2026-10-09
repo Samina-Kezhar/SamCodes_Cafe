@@ -192,18 +192,30 @@ export function App() {
       const searchParams = new URLSearchParams(window.location.search);
       let tableParam = searchParams.get('table');
 
-      if (!tableParam && window.location.hash.includes('table=')) {
-        const hashQuery = window.location.hash.split('?')[1];
-        if (hashQuery) {
-          const hashParams = new URLSearchParams(hashQuery);
-          tableParam = hashParams.get('table');
-        }
+      // Check hash parameters (e.g. #table=Table%204 or #menu?table=Table%204 or #qr?table=Table%204)
+      if (!tableParam && window.location.hash) {
+        const hashStr = window.location.hash.replace(/^#\/?/, '');
+        const hashQueryIdx = hashStr.indexOf('?');
+        const hashQuery = hashQueryIdx >= 0 ? hashStr.slice(hashQueryIdx + 1) : hashStr;
+        const hashParams = new URLSearchParams(hashQuery);
+        tableParam = hashParams.get('table');
       }
 
+      // Check path (e.g. /table/:id or /qr/:id)
+      const pathname = window.location.pathname;
+      if (!tableParam && pathname.startsWith('/table/')) {
+        tableParam = decodeURIComponent(pathname.replace('/table/', ''));
+      }
+
+      // Route to QR ordering website (Part 3)
       if (
         tableParam ||
         searchParams.has('order') ||
-        window.location.hash.includes('order')
+        window.location.hash.includes('order') ||
+        searchParams.has('qr') ||
+        window.location.hash.includes('qr') ||
+        pathname === '/qr' ||
+        pathname === '/order'
       ) {
         if (tableParam) {
           setActiveTable(decodeURIComponent(tableParam));
@@ -212,6 +224,7 @@ export function App() {
         return;
       }
 
+      // Route to Owner Dashboard (Part 2)
       if (
         searchParams.has('owner') ||
         searchParams.has('admin') ||
@@ -219,22 +232,37 @@ export function App() {
         window.location.hash.includes('owner') ||
         window.location.hash.includes('dashboard') ||
         window.location.hash.includes('admin') ||
-        window.location.pathname.includes('/owner') ||
-        window.location.pathname.includes('/admin') ||
-        window.location.pathname.includes('/dashboard')
+        pathname.includes('/owner') ||
+        pathname.includes('/admin') ||
+        pathname.includes('/dashboard')
       ) {
         if (isOwnerAuthenticated) {
           setCurrentPart('part3_owner');
         } else {
+          // Keep dashboard strictly inaccessible unless logged in
+          setCurrentPart('part1_customer');
           setIsOwnerAuthOpen(true);
         }
+        return;
       }
     };
 
     parseUrl();
     window.addEventListener('hashchange', parseUrl);
-    return () => window.removeEventListener('hashchange', parseUrl);
+    window.addEventListener('popstate', parseUrl);
+    return () => {
+      window.removeEventListener('hashchange', parseUrl);
+      window.removeEventListener('popstate', parseUrl);
+    };
   }, [isOwnerAuthenticated]);
+
+  // Guard: ensure owner dashboard is inaccessible if not authenticated
+  useEffect(() => {
+    if (currentPart === 'part3_owner' && !isOwnerAuthenticated) {
+      setCurrentPart('part1_customer');
+      setIsOwnerAuthOpen(true);
+    }
+  }, [currentPart, isOwnerAuthenticated]);
 
   // Fetch catalog & offers
   useEffect(() => {
@@ -265,6 +293,7 @@ export function App() {
   const handleOpenOwnerDashboard = () => {
     if (isOwnerAuthenticated) {
       setCurrentPart('part3_owner');
+      window.location.hash = 'owner';
     } else {
       setIsOwnerAuthOpen(true);
     }
@@ -281,12 +310,40 @@ export function App() {
     }
     setIsOwnerAuthenticated(false);
     setCurrentPart('part1_customer');
-    window.location.hash = '';
+    if (window.location.hash.includes('owner') || window.location.hash.includes('dashboard') || window.location.hash.includes('admin')) {
+      window.location.hash = '';
+    }
+    if (window.location.search.includes('owner') || window.location.search.includes('dashboard') || window.location.search.includes('admin')) {
+      window.history.replaceState({}, '', window.location.pathname);
+    }
   };
 
   const handleAuthenticated = () => {
     setIsOwnerAuthenticated(true);
     setCurrentPart('part3_owner');
+    window.location.hash = 'owner';
+  };
+
+  const handleCloseOwnerAuth = () => {
+    setIsOwnerAuthOpen(false);
+    if (!isOwnerAuthenticated) {
+      if (window.location.hash.includes('owner') || window.location.hash.includes('dashboard') || window.location.hash.includes('admin')) {
+        window.location.hash = '';
+      }
+      if (window.location.search.includes('owner') || window.location.search.includes('dashboard') || window.location.search.includes('admin')) {
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    }
+  };
+
+  const handleBackToCustomerSite = () => {
+    setCurrentPart('part1_customer');
+    if (window.location.search.includes('table=') || window.location.search.includes('order') || window.location.search.includes('qr')) {
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+    if (window.location.hash.includes('table=') || window.location.hash.includes('order') || window.location.hash.includes('qr')) {
+      window.location.hash = '';
+    }
   };
 
   const handleApplyOffer = (code) => {
@@ -311,6 +368,7 @@ export function App() {
           table={activeTable}
           theme={theme}
           onToggleTheme={toggleTheme}
+          onBackToCustomerSite={handleBackToCustomerSite}
         />
       ) : currentPart === 'part3_owner' && isOwnerAuthenticated ? (
         /* =============================================================== */
@@ -320,10 +378,17 @@ export function App() {
           onCloseDashboard={() => {
             setCurrentPart('part1_customer');
             window.location.hash = '';
+            if (window.location.search.includes('owner')) {
+              window.history.replaceState({}, '', window.location.pathname);
+            }
           }}
           onLogout={handleOwnerLogout}
           theme={theme}
           onToggleTheme={toggleTheme}
+          onOpenQrOrdering={(table) => {
+            if (table) setActiveTable(table);
+            setCurrentPart('part2_qr_ordering');
+          }}
         />
       ) : (
         /* =============================================================== */
@@ -333,8 +398,6 @@ export function App() {
           <Navbar
             theme={theme}
             onToggleTheme={toggleTheme}
-            onOpenCart={() => setIsCartOpen(true)}
-            cartCount={totalCartCount}
           />
 
           <main>
@@ -371,7 +434,9 @@ export function App() {
             <ContactSection />
 
             {/* Footer */}
-            <Footer />
+            <Footer
+              onOpenOwnerLogin={handleOpenOwnerDashboard}
+            />
           </main>
 
           {/* Cart Drawer (U01, U02) */}
@@ -412,7 +477,7 @@ export function App() {
       {/* Owner Authentication Modal */}
       <OwnerAuthModal
         isOpen={isOwnerAuthOpen}
-        onClose={() => setIsOwnerAuthOpen(false)}
+        onClose={handleCloseOwnerAuth}
         onAuthenticated={handleAuthenticated}
       />
     </div>

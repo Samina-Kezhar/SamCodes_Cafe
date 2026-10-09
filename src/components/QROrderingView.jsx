@@ -31,7 +31,8 @@ const CATEGORIES = [
 export function QROrderingView({
   table = 'Table 4',
   theme = 'modern-latte',
-  onToggleTheme
+  onToggleTheme,
+  onBackToCustomerSite
 }) {
   const [activeTable, setActiveTable] = useState(table || 'Table 4');
   const [isSwitchTableOpen, setIsSwitchTableOpen] = useState(false);
@@ -473,20 +474,43 @@ export function QROrderingView({
       >
         <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
           {/* Café Brand & Contactless Badge */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flexShrink: 1 }}>
+          <div
+            onClick={onBackToCustomerSite}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              minWidth: 0,
+              flexShrink: 1,
+              cursor: onBackToCustomerSite ? 'pointer' : 'default'
+            }}
+            title={onBackToCustomerSite ? 'Click to visit main public café website' : undefined}
+          >
             <CafenaLogoStamp size={38} />
             <div style={{ lineHeight: 1.15 }}>
               <div style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: '1.3rem', color: 'var(--text-main)', letterSpacing: '0.04em' }}>
                 CAFENA
               </div>
               <div style={{ fontSize: '0.68rem', color: 'var(--primary)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
-                QR Table Menu
+                QR Table Menu {onBackToCustomerSite && <span style={{ opacity: 0.7, textTransform: 'none' }}>• Back to Main Site ↗</span>}
               </div>
             </div>
           </div>
 
           {/* Right Controls: Table Badge, Theme & Cart */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexShrink: 0 }}>
+            {/* Café Website Link */}
+            {onBackToCustomerSite && (
+              <button
+                onClick={onBackToCustomerSite}
+                className="btn btn-secondary hide-on-mobile"
+                style={{ padding: '0.4rem 0.65rem', fontSize: '0.78rem' }}
+                title="Return to main public website"
+              >
+                Café Website
+              </button>
+            )}
+
             {/* Table Badge */}
             <button
               onClick={() => setIsSwitchTableOpen(true)}
