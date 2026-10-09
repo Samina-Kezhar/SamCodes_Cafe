@@ -13,6 +13,15 @@
     "node_modules/sql.js/dist/sql-wasm.wasm",
     "server/**"
   ]
+  external_node_modules = [
+    "serverless-http",
+    "express",
+    "cors",
+    "ws",
+    "sql.js",
+    "qrcode",
+    "@netlify/blobs"
+  ]
 
 # API routes forwarded to serverless Express function
 [[redirects]]

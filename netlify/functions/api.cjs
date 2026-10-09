@@ -1,9 +1,10 @@
+const serverless = require('serverless-http');
+
 let handlerPromise = null;
 
 async function getHandler() {
   if (!handlerPromise) {
     handlerPromise = (async () => {
-      const serverless = (await import('serverless-http')).default;
       const { app } = await import('../../server/server.js');
       const { initDatabase, saveDbNow } = await import('../../server/db.js');
       try {
