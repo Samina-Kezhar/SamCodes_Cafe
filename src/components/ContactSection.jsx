@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { MapPin, Phone, Clock, Mail, Send, CheckCircle, Navigation, Calendar, Users, MessageCircle } from 'lucide-react';
 import { InstagramIcon as Instagram } from './InstagramIcon';
+import { InstagramLink } from './InstagramLink';
 import { CafenaBrushStroke } from './CafenaDecorations';
 
 export function ContactSection() {
@@ -617,16 +618,15 @@ export function ContactSection() {
                     Follow Us on Social Media
                   </h4>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '4px' }}>
-                    <a
-                      href="https://www.instagram.com/cafena.nikol"
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <InstagramLink
+                      handleOrUrl="cafena.nikol"
                       className="btn btn-secondary"
                       style={{ padding: '4px 10px', fontSize: '0.8rem', gap: '6px' }}
+                      showIcon={true}
+                      iconSize={14}
                     >
-                      <Instagram size={14} style={{ color: '#c13584' }} />
                       <span>@cafena.nikol</span>
-                    </a>
+                    </InstagramLink>
                     <a
                       href="https://wa.me/916353935169"
                       target="_blank"

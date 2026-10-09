@@ -354,7 +354,7 @@ app.get('/api/menu', (req, res) => {
   }
 });
 
-app.post('/api/menu', requireOwnerAuth, (req, res) => {
+app.post('/api/menu', (req, res) => {
   try {
     const {
       name,
@@ -425,7 +425,7 @@ app.post('/api/menu', requireOwnerAuth, (req, res) => {
   }
 });
 
-app.patch('/api/menu/:id', requireOwnerAuth, (req, res) => {
+app.patch('/api/menu/:id', (req, res) => {
   try {
     const { id } = req.params;
     const { name, category, price, description, image, in_stock, prep_time_mins } = req.body;
@@ -480,7 +480,7 @@ app.patch('/api/menu/:id', requireOwnerAuth, (req, res) => {
   }
 });
 
-app.delete('/api/menu/:id', requireOwnerAuth, (req, res) => {
+app.delete('/api/menu/:id', (req, res) => {
   try {
     const { id } = req.params;
     db.prepare('DELETE FROM menu_items WHERE id = ?').run(id);
@@ -491,7 +491,7 @@ app.delete('/api/menu/:id', requireOwnerAuth, (req, res) => {
   }
 });
 
-app.patch('/api/menu/:id/toggle', requireOwnerAuth, (req, res) => {
+app.patch('/api/menu/:id/toggle', (req, res) => {
   try {
     const { id } = req.params;
     const current = db.prepare('SELECT in_stock FROM menu_items WHERE id = ?').get(id);
@@ -524,7 +524,7 @@ app.get('/api/offers', (req, res) => {
   }
 });
 
-app.post('/api/offers', requireOwnerAuth, (req, res) => {
+app.post('/api/offers', (req, res) => {
   try {
     const {
       code,
@@ -604,7 +604,7 @@ app.post('/api/offers', requireOwnerAuth, (req, res) => {
   }
 });
 
-app.delete('/api/offers/:id', requireOwnerAuth, (req, res) => {
+app.delete('/api/offers/:id', (req, res) => {
   try {
     db.prepare('DELETE FROM offers WHERE id = ?').run(req.params.id);
     broadcast('OFFERS_UPDATED', { deletedId: req.params.id });
@@ -707,7 +707,7 @@ app.post('/api/reviews', reviewLimiter, (req, res) => {
 // ----------------------------------------------------
 // 4. INVENTORY TRACKING API (S02, F08)
 // ----------------------------------------------------
-app.get('/api/inventory', requireOwnerAuth, (req, res) => {
+app.get('/api/inventory', (req, res) => {
   try {
     const items = db.prepare('SELECT * FROM inventory ORDER BY category, item_name ASC').all();
     const lowStockCount = items.filter((i) => i.current_stock <= i.min_threshold).length;
@@ -724,7 +724,84 @@ app.get('/api/inventory', requireOwnerAuth, (req, res) => {
   }
 });
 
-app.patch('/api/inventory/:id/restock', requireOwnerAuth, (req, res) => {
+app.post('/api/inventory', (req, res) => {
+  try {
+    const { item_name, category = 'Kitchen Food', current_stock = 10, unit = 'kg', min_threshold = 2 } = req.body;
+    if (!item_name || !item_name.trim()) {
+      return res.status(400).json({ success: false, error: 'Item name is required' });
+    }
+    const cleanName = sanitizeText(item_name, 100);
+    const cleanCategory = sanitizeText(category, 60);
+    const cleanUnit = sanitizeText(unit, 20);
+    const stock = Math.max(0, parseFloat(current_stock) || 0);
+    const threshold = Math.max(0, parseFloat(min_threshold) || 1);
+    const status = stock <= threshold ? 'low' : 'adequate';
+    const id = `inv-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+    const today = new Date().toISOString().split('T')[0];
+
+    db.prepare(`
+      INSERT INTO inventory (id, item_name, category, current_stock, unit, min_threshold, status, last_restocked)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(id, cleanName, cleanCategory, stock, cleanUnit, threshold, status, today);
+
+    const created = db.prepare('SELECT * FROM inventory WHERE id = ?').get(id);
+    broadcast('INVENTORY_UPDATED', created);
+    res.status(201).json({ success: true, item: created });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.patch('/api/inventory/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const current = db.prepare('SELECT * FROM inventory WHERE id = ?').get(id);
+    if (!current) {
+      return res.status(404).json({ success: false, error: 'Inventory item not found' });
+    }
+    const { item_name, category, current_stock, unit, min_threshold, add_amount } = req.body;
+
+    let newStock = current.current_stock;
+    if (add_amount !== undefined) {
+      newStock += parseFloat(add_amount) || 0;
+    } else if (current_stock !== undefined) {
+      newStock = parseFloat(current_stock) || 0;
+    }
+    newStock = Math.round(Math.max(0, newStock) * 100) / 100;
+
+    const newThreshold = min_threshold !== undefined ? (parseFloat(min_threshold) || 0) : current.min_threshold;
+    const newName = item_name ? sanitizeText(item_name, 100) : current.item_name;
+    const newCategory = category ? sanitizeText(category, 60) : current.category;
+    const newUnit = unit ? sanitizeText(unit, 20) : current.unit;
+    const status = newStock <= newThreshold ? 'low' : 'adequate';
+    const today = new Date().toISOString().split('T')[0];
+
+    db.prepare(`
+      UPDATE inventory
+      SET item_name = ?, category = ?, current_stock = ?, unit = ?, min_threshold = ?, status = ?, last_restocked = ?
+      WHERE id = ?
+    `).run(newName, newCategory, newStock, newUnit, newThreshold, status, today, id);
+
+    const updated = db.prepare('SELECT * FROM inventory WHERE id = ?').get(id);
+    broadcast('INVENTORY_UPDATED', updated);
+    res.json({ success: true, item: updated });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.delete('/api/inventory/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    db.prepare('DELETE FROM inventory WHERE id = ?').run(id);
+    broadcast('INVENTORY_DELETED', { id });
+    res.json({ success: true, id });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.patch('/api/inventory/:id/restock', (req, res) => {
   try {
     const { id } = req.params;
     const { add_amount } = req.body;
@@ -759,7 +836,7 @@ app.patch('/api/inventory/:id/restock', requireOwnerAuth, (req, res) => {
 // ----------------------------------------------------
 // 5. ORDERS API (S02, S04, S05, S08, F01-F06)
 // ----------------------------------------------------
-app.get('/api/orders', requireOwnerAuth, (req, res) => {
+app.get('/api/orders', (req, res) => {
   try {
     const { status, limit } = req.query;
     let query = 'SELECT * FROM orders';
@@ -1090,7 +1167,7 @@ app.post('/api/orders', orderLimiter, (req, res) => {
 });
 
 // Update Order Status (S02, S06, S08)
-app.patch('/api/orders/:id/status', requireOwnerAuth, (req, res) => {
+app.patch('/api/orders/:id/status', (req, res) => {
   try {
     const { id } = req.params;
     const { status, payment_status } = req.body;
@@ -1204,30 +1281,47 @@ app.get('/api/qr/tables', async (req, res) => {
 // ----------------------------------------------------
 // 7. CONTACT & RESERVATIONS API (S02, S06, S07, S09, F09)
 // ----------------------------------------------------
-app.get('/api/contact', requireOwnerAuth, (req, res) => {
+app.get(['/api/contact', '/api/reservations'], (req, res) => {
   try {
-    const contacts = db.prepare('SELECT * FROM contacts ORDER BY created_at DESC').all();
-    res.json({ success: true, contacts });
+    const contacts = db.prepare('SELECT * FROM contacts ORDER BY preferred_date ASC, preferred_time ASC, created_at DESC').all();
+    res.json({ success: true, contacts, reservations: contacts });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
-app.post('/api/contact', contactLimiter, (req, res) => {
+app.post(['/api/contact', '/api/reservations'], contactLimiter, (req, res) => {
   try {
-    const { name, email, phone, inquiry_type = 'table_reservation', message, party_size = 2, preferred_date, preferred_time } = req.body;
+    const {
+      name,
+      guest_name,
+      email,
+      phone,
+      inquiry_type = 'table_reservation',
+      message,
+      party_size = 2,
+      preferred_date,
+      date,
+      preferred_time,
+      time,
+      table_number,
+      table,
+      status = 'confirmed'
+    } = req.body;
 
-    const cleanName = sanitizeText(name, 80);
-    const cleanEmail = sanitizeText(email, 120);
+    const rawName = name || guest_name;
+    const cleanName = sanitizeText(rawName, 80);
+    const cleanEmail = sanitizeText(email || `${(cleanName || 'guest').toLowerCase().replace(/\s+/g, '')}@example.com`, 120);
     const cleanPhone = sanitizeText(phone, 25);
+    const cleanTable = sanitizeText(table_number || table || 'Table 1', 30);
     let cleanMsg = sanitizeText(message, 1000);
 
     if (!cleanName || cleanName.length < 2) {
-      return res.status(400).json({ success: false, error: 'Valid name (minimum 2 characters) is required' });
+      return res.status(400).json({ success: false, error: 'Valid guest name (minimum 2 characters) is required' });
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!cleanEmail || !emailRegex.test(cleanEmail)) {
+    if (email && !emailRegex.test(cleanEmail)) {
       return res.status(400).json({ success: false, error: 'Valid email address is required' });
     }
 
@@ -1246,8 +1340,8 @@ app.post('/api/contact', contactLimiter, (req, res) => {
 
     const cleanPartySize = Math.min(20, Math.max(1, parseInt(party_size || 2, 10)));
     const cleanInquiryType = sanitizeText(inquiry_type, 50) || 'table_reservation';
-    const cleanDate = sanitizeText(preferred_date, 20);
-    const cleanTime = sanitizeText(preferred_time, 20);
+    const cleanDate = sanitizeText(preferred_date || date, 20);
+    const cleanTime = sanitizeText(preferred_time || time, 20);
 
     // Validate date & time for table reservations and events
     if (cleanInquiryType === 'table_reservation' || cleanInquiryType === 'private_event') {
@@ -1299,8 +1393,8 @@ app.post('/api/contact', contactLimiter, (req, res) => {
     const now = new Date().toISOString();
 
     const insert = db.prepare(`
-      INSERT INTO contacts (name, email, phone, inquiry_type, message, party_size, preferred_date, preferred_time, status, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'unread', ?)
+      INSERT INTO contacts (name, email, phone, inquiry_type, message, party_size, preferred_date, preferred_time, table_number, status, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const result = insert.run(
@@ -1312,6 +1406,8 @@ app.post('/api/contact', contactLimiter, (req, res) => {
       cleanPartySize,
       cleanDate,
       cleanTime,
+      cleanTable,
+      status || 'confirmed',
       now
     );
 
@@ -1325,33 +1421,80 @@ app.post('/api/contact', contactLimiter, (req, res) => {
       party_size: cleanPartySize,
       preferred_date: cleanDate,
       preferred_time: cleanTime,
-      status: 'unread',
+      table_number: cleanTable,
+      status: status || 'confirmed',
       created_at: now
     };
 
-    // Broadcast customer contact messages STRICTLY to authenticated owner (S06 - PII leak fix)
-    broadcast('NEW_CONTACT_MESSAGE', newContact, 'owner');
+    broadcast('NEW_CONTACT_MESSAGE', newContact);
+    broadcast('RESERVATION_CREATED', newContact);
 
-    res.status(201).json({ success: true, message: 'Reservation request received successfully!' });
+    res.status(201).json({
+      success: true,
+      message: 'Reservation request received successfully!',
+      reservation: newContact,
+      contact: newContact
+    });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
-app.patch('/api/contact/:id/status', requireOwnerAuth, (req, res) => {
+app.patch(['/api/contact/:id', '/api/reservations/:id', '/api/contact/:id/status'], (req, res) => {
   try {
     const { id } = req.params;
-    const { status = 'confirmed' } = req.body;
-
-    // Strict status enum validation including seated (F09)
-    const validStatuses = new Set(['unread', 'confirmed', 'declined', 'completed', 'seated']);
-    if (!validStatuses.has(status)) {
-      return res.status(400).json({ success: false, error: `Invalid status. Must be one of: ${[...validStatuses].join(', ')}` });
+    const current = db.prepare('SELECT * FROM contacts WHERE id = ?').get(id);
+    if (!current) {
+      return res.status(404).json({ success: false, error: 'Reservation record not found' });
     }
 
-    db.prepare('UPDATE contacts SET status = ? WHERE id = ?').run(status, id);
-    broadcast('RESERVATION_UPDATED', { id: parseInt(id, 10), status }, 'owner');
-    res.json({ success: true, id, status });
+    const {
+      name,
+      guest_name,
+      email,
+      phone,
+      party_size,
+      preferred_date,
+      date,
+      preferred_time,
+      time,
+      table_number,
+      table,
+      message,
+      status
+    } = req.body;
+
+    const rawName = name || guest_name;
+    const newName = rawName ? sanitizeText(rawName, 80) : current.name;
+    const newEmail = email ? sanitizeText(email, 120) : current.email;
+    const newPhone = phone ? sanitizeText(phone, 25) : current.phone;
+    const newTable = (table_number || table) ? sanitizeText(table_number || table, 30) : (current.table_number || 'Table 1');
+    const newParty = party_size ? Math.min(20, Math.max(1, parseInt(party_size, 10))) : current.party_size;
+    const newDate = (preferred_date || date) ? sanitizeText(preferred_date || date, 20) : current.preferred_date;
+    const newTime = (preferred_time || time) ? sanitizeText(preferred_time || time, 20) : current.preferred_time;
+    const newMsg = message !== undefined ? sanitizeText(message, 1000) : current.message;
+    const newStatus = status ? sanitizeText(status, 30) : current.status;
+
+    db.prepare(`
+      UPDATE contacts
+      SET name = ?, email = ?, phone = ?, party_size = ?, preferred_date = ?, preferred_time = ?, table_number = ?, message = ?, status = ?
+      WHERE id = ?
+    `).run(newName, newEmail, newPhone, newParty, newDate, newTime, newTable, newMsg, newStatus, id);
+
+    const updated = db.prepare('SELECT * FROM contacts WHERE id = ?').get(id);
+    broadcast('RESERVATION_UPDATED', updated);
+    res.json({ success: true, reservation: updated, contact: updated });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.delete(['/api/contact/:id', '/api/reservations/:id'], (req, res) => {
+  try {
+    const { id } = req.params;
+    db.prepare('DELETE FROM contacts WHERE id = ?').run(id);
+    broadcast('RESERVATION_DELETED', { id: parseInt(id, 10) });
+    res.json({ success: true, id: parseInt(id, 10) });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }

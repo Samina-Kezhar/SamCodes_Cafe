@@ -294,12 +294,13 @@ function runMigrationsAndSeeds() {
       name TEXT NOT NULL,
       email TEXT NOT NULL,
       phone TEXT,
-      inquiry_type TEXT DEFAULT 'general',
+      inquiry_type TEXT DEFAULT 'table_reservation',
       message TEXT NOT NULL,
       party_size INTEGER DEFAULT 2,
       preferred_date TEXT,
       preferred_time TEXT,
-      status TEXT DEFAULT 'unread',
+      table_number TEXT DEFAULT 'Table 1',
+      status TEXT DEFAULT 'confirmed',
       created_at TEXT NOT NULL
     );
 
@@ -375,6 +376,13 @@ function runMigrationsAndSeeds() {
   // Ensure tracking_token column exists in orders for IDOR protection
   try {
     db.prepare('ALTER TABLE orders ADD COLUMN tracking_token TEXT').run();
+  } catch {
+    // Column already exists
+  }
+
+  // Ensure table_number column exists in contacts for table reservations
+  try {
+    db.prepare("ALTER TABLE contacts ADD COLUMN table_number TEXT DEFAULT 'Table 1'").run();
   } catch {
     // Column already exists
   }
