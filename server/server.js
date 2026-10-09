@@ -7,12 +7,16 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import crypto from 'node:crypto';
 import QRCode from 'qrcode';
-import { db, initDatabase } from './db.js';
+import { db, initDatabase, ensureDbReady } from './db.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+let currentDirname = process.cwd();
+try {
+  currentDirname = path.dirname(fileURLToPath(import.meta.url));
+} catch {
+  currentDirname = typeof __dirname !== 'undefined' ? __dirname : process.cwd();
+}
 
-// Initialize DB schema & seed
+// Initialize DB schema & seed in background
 initDatabase();
 
 const isServerless = !!(process.env.NETLIFY || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.LAMBDA_TASK_ROOT || process.env.SERVERLESS);
@@ -24,8 +28,19 @@ const wss = new WebSocketServer({ server, path: '/ws' });
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 
+// Ensure database is ready for all requests
+app.use(async (req, res, next) => {
+  try {
+    await ensureDbReady();
+    next();
+  } catch (err) {
+    console.error('Database initialization error:', err);
+    res.status(500).json({ success: false, error: 'Database initialization failed' });
+  }
+});
+
 // Serve static public folder (images, icons)
-app.use(express.static(path.join(__dirname, '..', 'public')));
+app.use(express.static(path.join(currentDirname, '..', 'public')));
 
 // ----------------------------------------------------
 // SECURITY & AUTH CONFIGURATION (S01, S02, S03)
@@ -1395,7 +1410,7 @@ app.get('/api/coupons', (req, res) => res.redirect('/api/offers'));
 app.get('/api/analytics', requireOwnerAuth, (req, res) => res.redirect('/api/dashboard/stats'));
 
 // Serve frontend if built (F16)
-const distPath = path.join(__dirname, '..', 'dist');
+const distPath = path.join(currentDirname, '..', 'dist');
 if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));
 }
@@ -1413,7 +1428,7 @@ app.use((req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
-const isDirectRun = Boolean(process.argv[1] && (path.resolve(process.argv[1]) === fileURLToPath(import.meta.url) || process.argv[1].endsWith('server.js')));
+const isDirectRun = Boolean(process.argv[1] && (process.argv[1].endsWith('server.js') || process.argv[1].endsWith('server.cjs')));
 
 if (!isServerless && isDirectRun && process.env.NODE_ENV !== 'test') {
   server.listen(PORT, () => {
@@ -1422,4 +1437,4 @@ if (!isServerless && isDirectRun && process.env.NODE_ENV !== 'test') {
   });
 }
 
-export { app, server };
+export { app, server, ensureDbReady };

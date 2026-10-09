@@ -5,10 +5,14 @@ import { fileURLToPath } from 'node:url';
 import { getStore } from '@netlify/blobs';
 import { initialMenuItems, initialOffers } from './menuData.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+let currentDirname = process.cwd();
+try {
+  currentDirname = path.dirname(fileURLToPath(import.meta.url));
+} catch {
+  currentDirname = typeof __dirname !== 'undefined' ? __dirname : process.cwd();
+}
 
-const dataDir = path.join(__dirname, 'data');
+const dataDir = path.join(currentDirname, 'data');
 if (!fs.existsSync(dataDir)) {
   try { fs.mkdirSync(dataDir, { recursive: true }); } catch {}
 }
@@ -27,52 +31,92 @@ function getBlobStore() {
   return blobStore;
 }
 
-const SQL = await initSqlJs({
-  locateFile: (file) => {
-    const candidates = [
-      path.resolve(process.cwd(), 'node_modules/sql.js/dist', file),
-      path.resolve(__dirname, 'node_modules/sql.js/dist', file),
-      path.resolve(__dirname, file),
-      path.resolve(process.cwd(), file)
-    ];
-    for (const cand of candidates) {
-      if (fs.existsSync(cand)) return cand;
-    }
-    return file;
-  }
-});
-
+let SQL = null;
 let rawDb = null;
+let initPromise = null;
 
-if (process.env.NETLIFY) {
-  const store = getBlobStore();
-  if (store) {
-    try {
-      const blob = await store.get('coffeestand.db', { type: 'arrayBuffer' });
-      if (blob && blob.byteLength > 0) {
-        rawDb = new SQL.Database(Buffer.from(blob));
+export async function ensureDbReady() {
+  if (rawDb) return rawDb;
+  if (initPromise) return initPromise;
+
+  initPromise = (async () => {
+    if (!SQL) {
+      const candidates = [
+        path.resolve(currentDirname, '../node_modules/sql.js/dist/sql-wasm.wasm'),
+        path.resolve(process.cwd(), 'node_modules/sql.js/dist/sql-wasm.wasm'),
+        path.resolve(currentDirname, 'node_modules/sql.js/dist/sql-wasm.wasm'),
+        path.resolve(currentDirname, 'sql-wasm.wasm'),
+        path.resolve(process.cwd(), 'sql-wasm.wasm'),
+        path.resolve('/var/task/node_modules/sql.js/dist/sql-wasm.wasm'),
+        path.resolve('/var/task/sql-wasm.wasm')
+      ];
+
+      let wasmBinary = null;
+      for (const cand of candidates) {
+        if (fs.existsSync(cand)) {
+          try {
+            wasmBinary = fs.readFileSync(cand);
+            break;
+          } catch {}
+        }
       }
-    } catch (e) {
-      console.warn('Netlify Blobs initial read notice:', e);
-    }
-  }
-}
 
-if (!rawDb) {
-  if (fs.existsSync(dbPath)) {
-    try {
-      const fileBuffer = fs.readFileSync(dbPath);
-      if (fileBuffer.length > 0) {
-        rawDb = new SQL.Database(fileBuffer);
+      const sqlConfig = {
+        locateFile: (file) => {
+          for (const cand of candidates) {
+            if (fs.existsSync(cand)) return cand;
+          }
+          return file;
+        }
+      };
+
+      if (wasmBinary) {
+        sqlConfig.wasmBinary = wasmBinary;
       }
-    } catch (e) {
-      console.warn('Local db read error:', e);
-    }
-  }
-}
 
-if (!rawDb) {
-  rawDb = new SQL.Database();
+      SQL = await initSqlJs(sqlConfig);
+    }
+
+    if (!rawDb) {
+      if (process.env.NETLIFY) {
+        const store = getBlobStore();
+        if (store) {
+          try {
+            const blob = await store.get('coffeestand.db', { type: 'arrayBuffer' });
+            if (blob && blob.byteLength > 0) {
+              rawDb = new SQL.Database(Buffer.from(blob));
+            }
+          } catch (e) {
+            console.warn('Netlify Blobs initial read notice:', e);
+          }
+        }
+      }
+
+      if (!rawDb) {
+        if (fs.existsSync(dbPath)) {
+          try {
+            const fileBuffer = fs.readFileSync(dbPath);
+            if (fileBuffer.length > 0) {
+              rawDb = new SQL.Database(fileBuffer);
+            }
+          } catch (e) {
+            console.warn('Local db read error:', e);
+          }
+        }
+      }
+
+      if (!rawDb) {
+        rawDb = new SQL.Database();
+      }
+
+      rawDb.exec('PRAGMA foreign_keys = ON;');
+      runMigrationsAndSeeds();
+    }
+
+    return rawDb;
+  })();
+
+  return initPromise;
 }
 
 let isDirty = false;
@@ -141,6 +185,9 @@ export function scheduleSave() {
 
 export const db = {
   exec(sql) {
+    if (!rawDb) {
+      throw new Error('Database is not initialized. Call ensureDbReady() before executing queries.');
+    }
     const trimmed = sql.trim();
     if (/^BEGIN\b/i.test(trimmed)) {
       inTransaction = true;
@@ -164,6 +211,9 @@ export const db = {
     return res;
   },
   prepare(sql) {
+    if (!rawDb) {
+      throw new Error('Database is not initialized. Call ensureDbReady() before executing queries.');
+    }
     return {
       all(...params) {
         const stmt = rawDb.prepare(sql);
@@ -194,11 +244,15 @@ export const db = {
   }
 };
 
-// Enable foreign keys
-db.exec('PRAGMA foreign_keys = ON;');
-
-// Initialize tables
 export function initDatabase() {
+  ensureDbReady().catch((err) => {
+    console.error('ensureDbReady initialization error in initDatabase:', err);
+  });
+  return initPromise;
+}
+
+// Run schema setup and data seeding once rawDb is open
+function runMigrationsAndSeeds() {
   db.exec(`
     CREATE TABLE IF NOT EXISTS menu_items (
       id TEXT PRIMARY KEY,

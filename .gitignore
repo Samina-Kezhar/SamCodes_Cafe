@@ -18,3 +18,5 @@ pnpm-debug.log*
 # System
 .DS_Store
 Thumbs.db
+scratch/
+netlify/functions/data/

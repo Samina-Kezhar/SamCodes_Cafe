@@ -10,17 +10,8 @@
   directory = "netlify/functions"
   node_bundler = "esbuild"
   included_files = [
-    "node_modules/sql.js/dist/sql-wasm.wasm",
-    "server/**"
-  ]
-  external_node_modules = [
-    "serverless-http",
-    "express",
-    "cors",
-    "ws",
-    "sql.js",
-    "qrcode",
-    "@netlify/blobs"
+    "netlify/functions/sql-wasm.wasm",
+    "node_modules/sql.js/dist/sql-wasm.wasm"
   ]
 
 # API routes forwarded to serverless Express function
