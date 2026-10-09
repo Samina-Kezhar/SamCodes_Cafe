@@ -123,7 +123,7 @@ export function scheduleSave() {
   const store = getBlobStore();
   if (store && !savePending) {
     savePending = true;
-    setTimeout(async () => {
+    const saveTimer = setTimeout(async () => {
       savePending = false;
       if (inTransaction) return;
       try {
@@ -133,6 +133,9 @@ export function scheduleSave() {
         console.warn('Failed to sync to Netlify Blobs:', err);
       }
     }, 150);
+    if (saveTimer.unref) {
+      saveTimer.unref();
+    }
   }
 }
 

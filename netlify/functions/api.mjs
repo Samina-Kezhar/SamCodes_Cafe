@@ -12,6 +12,11 @@ try {
 const serverlessHandler = serverless(app);
 
 export const handler = async (event, context) => {
+  // Prevent Lambda from waiting for background timers to empty
+  if (context) {
+    context.callbackWaitsForEmptyEventLoop = false;
+  }
+
   // Support both direct Netlify function URL and /api/* rewritten URL
   if (event.path && event.path.startsWith('/.netlify/functions/api')) {
     event.path = event.path.replace('/.netlify/functions/api', '/api');

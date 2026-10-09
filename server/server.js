@@ -15,6 +15,8 @@ const __dirname = path.dirname(__filename);
 // Initialize DB schema & seed
 initDatabase();
 
+const isServerless = !!(process.env.NETLIFY || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.LAMBDA_TASK_ROOT || process.env.SERVERLESS);
+
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server, path: '/ws' });
@@ -100,7 +102,7 @@ function createRateLimiter({ windowMs = 60000, max = 30, message = 'Too many req
   const requests = new Map();
 
   // Periodically clean expired keys
-  setInterval(() => {
+  const cleanupTimer = setInterval(() => {
     const now = Date.now();
     for (const [ip, entry] of requests.entries()) {
       if (now - entry.startTime > windowMs) {
@@ -108,6 +110,9 @@ function createRateLimiter({ windowMs = 60000, max = 30, message = 'Too many req
       }
     }
   }, windowMs);
+  if (cleanupTimer.unref) {
+    cleanupTimer.unref();
+  }
 
   return (req, res, next) => {
     const ip = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
@@ -196,18 +201,24 @@ export function broadcast(type, payload, targetRole = null) {
 }
 
 // Heartbeat & zombie client detection (F13)
-const heartbeatInterval = setInterval(() => {
-  wss.clients.forEach((ws) => {
-    if (ws.isAlive === false) {
-      return ws.terminate();
-    }
-    ws.isAlive = false;
-    ws.ping();
-  });
-}, 30000);
+let heartbeatInterval = null;
+if (!isServerless) {
+  heartbeatInterval = setInterval(() => {
+    wss.clients.forEach((ws) => {
+      if (ws.isAlive === false) {
+        return ws.terminate();
+      }
+      ws.isAlive = false;
+      ws.ping();
+    });
+  }, 30000);
+  if (heartbeatInterval.unref) {
+    heartbeatInterval.unref();
+  }
+}
 
 wss.on('close', () => {
-  clearInterval(heartbeatInterval);
+  if (heartbeatInterval) clearInterval(heartbeatInterval);
 });
 
 wss.on('connection', (ws) => {
@@ -1402,7 +1413,6 @@ app.use((req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
-const isServerless = !!(process.env.NETLIFY || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.LAMBDA_TASK_ROOT || process.env.SERVERLESS);
 const isDirectRun = Boolean(process.argv[1] && (path.resolve(process.argv[1]) === fileURLToPath(import.meta.url) || process.argv[1].endsWith('server.js')));
 
 if (!isServerless && isDirectRun && process.env.NODE_ENV !== 'test') {
